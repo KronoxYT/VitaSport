@@ -1,0 +1,6 @@
+node_modules/
+vitasport.sqlite
+.env
+.DS_Store
+*.log
+dist/

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VitaSport</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 220px;
+            background-color: #343a40;
+            color: white;
+            padding-top: 1rem;
+        }
+        .sidebar .nav-link {
+            color: #c2c7d0;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #495057;
+        }
+        .content-area {
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <h4 class="text-center">VitaSport</h4>
+        <hr style="background-color: #6c757d;">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-view="dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-view="inventario">Inventario</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-view="ventas">Ventas</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-view="reportes">Reportes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-view="usuarios">Usuarios</a>
+            </li>
+        </ul>
+        <div class="position-absolute bottom-0 p-3">
+            <button id="logout-btn" class="btn btn-danger">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <main class="content-area" id="content-area">
+        <!-- El contenido de las vistas se cargará aquí -->
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="./ui-loader.js"></script>
+</body>
+</html>

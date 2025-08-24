@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VitaSport - Iniciar Sesión</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .login-card {
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2 class="text-center mb-2">VitaSport</h2>
+        <p class="text-center text-muted mb-4">Control de Inventario</p>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <input type="text" class="form-control" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
+        </form>
+        <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+</html>

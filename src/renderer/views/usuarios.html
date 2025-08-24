@@ -1,0 +1,62 @@
+<!-- src/renderer/views/usuarios.html -->
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Gestión de Usuarios</h1>
+        <button class="btn btn-primary" id="btn-nuevo-usuario">+ Nuevo Usuario</button>
+    </div>
+
+    <!-- Tabla de Usuarios -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Nombre completo</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+                <!-- Las filas de usuarios se insertarán aquí -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Añadir/Editar Usuario -->
+<div class="modal fade" id="modalUsuario" tabindex="-1" role="dialog" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalUsuarioLabel">Nuevo Usuario</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formUsuario">
+                <div class="modal-body">
+                    <input type="hidden" id="usuario-id" name="id">
+                    <div class="form-group"><label>Usuario</label><input type="text" class="form-control" name="username" required></div>
+                    <div class="form-group"><label>Nueva Contraseña</label><input type="password" class="form-control" name="password" placeholder="Dejar en blanco para no cambiar"></div>
+                    <div class="form-group"><label>Confirmar Contraseña</label><input type="password" class="form-control" name="password_confirm" placeholder="Dejar en blanco para no cambiar"></div>
+                    <div class="form-group"><label>Nombre completo</label><input type="text" class="form-control" name="fullname"></div>
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <select class="form-control" name="role" required>
+                            <option value="" disabled selected>Selecciona un rol</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Vendedor">Vendedor</option>
+                            <option value="Gestor de Inventario">Gestor de Inventario</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,125 @@
+<!-- src/renderer/views/inventario.html -->
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Inventario de Productos</h1>
+        <div>
+            <button class="btn btn-success mr-2" id="btn-exportar-inventario">Exportar PDF</button>
+            <button class="btn btn-secondary mr-2" id="btn-movimiento-stock">Registrar Movimiento</button>
+            <button class="btn btn-primary" id="btn-nuevo-producto">+ Añadir Producto</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Registrar Movimiento de Stock -->
+<div class="modal fade" id="modalMovimientoStock" tabindex="-1" role="dialog" aria-labelledby="modalMovimientoStockLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMovimientoStockLabel">Registrar Movimiento de Stock</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formMovimientoStock">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Producto</label>
+                        <select class="form-control" name="product_id" id="mov-producto" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de movimiento</label>
+                        <select class="form-control" name="type" required>
+                            <option value="ingreso">Ingreso</option>
+                            <option value="egreso">Egreso</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <input type="number" class="form-control" name="quantity" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nota</label>
+                        <input type="text" class="form-control" name="note">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" class="form-control" id="filtro-busqueda" placeholder="Buscar por nombre o SKU...">
+        </div>
+        <div class="col-md-4">
+            <select class="form-control" id="filtro-categoria">
+                <option value="">Filtrar por categoría...</option>
+                <!-- Las categorías se cargarán aquí dinámicamente -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabla de Productos -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>SKU</th>
+                    <th>Producto</th>
+                    <th>Marca</th>
+                    <th>Categoría</th>
+                    <th>Stock</th>
+                    <th>Precio Venta</th>
+                    <th>Vencimiento</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="productos-tbody">
+                <!-- Las filas de productos se insertarán aquí -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Añadir/Editar Producto -->
+<div class="modal fade" id="modalProducto" tabindex="-1" role="dialog" aria-labelledby="modalProductoLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalProductoLabel">Añadir Producto</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formProducto">
+                <div class="modal-body">
+                    <input type="hidden" id="producto-id" name="id">
+                    <input type="hidden" id="image-path" name="image_path">
+                    <div class="form-group">
+                        <label>Imagen</label>
+                        <button type="button" id="select-image-btn" class="btn btn-secondary btn-block">Seleccionar Imagen</button>
+                        <img id="image-preview" src="" class="img-fluid mt-2" style="max-height: 150px; display: none;"/>
+                    </div>
+                    <div class="form-group"><label>SKU</label><input type="text" class="form-control" name="sku"></div>
+                    <div class="form-group"><label>Nombre</label><input type="text" class="form-control" name="name" required></div>
+                    <div class="form-group"><label>Marca</label><input type="text" class="form-control" name="brand"></div>
+                    <div class="form-group"><label>Categoría</label><input type="text" class="form-control" name="category"></div>
+                    <div class="form-group"><label>Precio Venta</label><input type="number" step="0.01" class="form-control" name="sale_price"></div>
+                    <div class="form-group"><label>Vencimiento</label><input type="date" class="form-control" name="expiry_date"></div>
+                    <div class="form-group"><label>Stock Mínimo</label><input type="number" class="form-control" name="min_stock"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

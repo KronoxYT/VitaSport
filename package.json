@@ -1,0 +1,52 @@
+{
+  "name": "vitasport",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de inventario para VitaSport.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "jest",
+    "db:migrate": "node src/database/migrate.js",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.vitasport.desktop",
+    "productName": "VitaSport",
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "vitasport.sqlite"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  },
+  "keywords": [],
+  "author": "KronoxYT",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
+    "pdfmake": "^0.2.20",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "electron": "27.3.0",
+    "electron-builder": "^26.0.12",
+    "jest": "^29.7.0",
+    "supertest": "^7.1.4"
+  }
+}
+
