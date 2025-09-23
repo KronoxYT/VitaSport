@@ -12,8 +12,9 @@ if (process.env.NODE_ENV === 'test') {
     filename: ':memory:'
   };
 } else {
+  const sqlitePath = process.env.SQLITE_FILENAME || path.resolve(__dirname, '../../vitasport.sqlite');
   dbConfig.connection = {
-    filename: path.resolve(__dirname, '../../vitasport.sqlite')
+    filename: sqlitePath
   };
 }
 

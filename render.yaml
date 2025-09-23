@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: vitasport-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SQLITE_FILENAME
+        value: /opt/render/project/data/vitasport.sqlite
+    healthCheckPath: /api/usuarios
+    autoDeploy: true
+

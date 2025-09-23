@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 
 // Importar Rutas
 const productRoutes = require('./routes/productRoutes');
@@ -12,6 +13,7 @@ const alertsRoutes = require('./routes/alertsRoutes');
 
 function createApp() {
   const app = express();
+  app.use(cors());
   app.use(express.json());
 
   // --- Rutas de la API ---
