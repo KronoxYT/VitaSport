@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 result = await window.api.login(username, password);
             } else {
                 // Fallback para entorno de navegador (Live Server) usando la API REST
-                const resp = await fetch('http://localhost:3001/api/usuarios/login', {
+                const baseUrl = (window.__CONFIG__ && window.__CONFIG__.API_BASE_URL) ? window.__CONFIG__.API_BASE_URL : 'http://localhost:3001/api';
+                const resp = await fetch(baseUrl + '/usuarios/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })

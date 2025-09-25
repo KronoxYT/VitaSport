@@ -54,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Manejar clic en el botón de logout
     logoutBtn.addEventListener('click', () => {
-        window.api.clearToken();
+        if (window.api && typeof window.api.clearToken === 'function') {
+            window.api.clearToken();
+        }
         window.location.href = 'index.html';
     });
 
