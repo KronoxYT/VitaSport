@@ -11,6 +11,7 @@ const getAllUsers = async (req, res) => {
         const users = await knex('users').select('id', 'username', 'role', 'created_at', 'fullname');
         res.json({ success: true, users });
     } catch (error) {
+        console.error('Error getAllUsers:', error);
         res.status(500).json({ success: false, message: 'Error al obtener usuarios.' });
     }
 };
