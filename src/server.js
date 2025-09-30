@@ -16,8 +16,7 @@ function createApp() {
 
   // CORS: permitir el frontend en Vercel y preflight global
   const allowedOrigins = [
-    'https://vitasport-frontend-cnbpsmgln-mea-core-enterprises-projects.vercel.app',
-    'https://vitasport-frontend.vercel.app'
+    process.env.CORS_ORIGIN || 'https://vitasport-frontend.vercel.app',
   ];
   const corsOptions = {
     origin: (origin, callback) => {
