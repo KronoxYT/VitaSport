@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 
 // Configuración de la base de datos
 const dbConfig = {
@@ -13,6 +14,15 @@ if (process.env.NODE_ENV === 'test') {
   };
 } else {
   const sqlitePath = process.env.SQLITE_FILENAME || path.resolve(__dirname, '../../vitasport.sqlite');
+  // Asegurar que el directorio existe (necesario en Render para /opt/render/project/data)
+  try {
+    const dir = path.dirname(sqlitePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (_) {
+    // si falla, SQLite intentará igualmente; log no necesario aquí
+  }
   dbConfig.connection = {
     filename: sqlitePath
   };
