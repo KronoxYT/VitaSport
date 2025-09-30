@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { exec } = require('child_process');
 
 // Importar Rutas
 const productRoutes = require('./routes/productRoutes');
@@ -45,7 +46,17 @@ function createApp() {
   return app;
 }
 
-function startServer() {
+async function runMigrationsIfNeeded() {
+  return new Promise((resolve) => {
+    if (process.env.RUN_MIGRATIONS_ON_START === 'false') return resolve();
+    const child = exec('node src/database/migrate.js', { cwd: process.cwd() });
+    child.on('exit', () => resolve());
+    child.on('error', () => resolve());
+  });
+}
+
+async function startServer() {
+  await runMigrationsIfNeeded();
   const app = createApp();
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
