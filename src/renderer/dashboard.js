@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const graficoVentasMesCanvas = document.getElementById('grafico-ventas-mes');
 
     // --- Lógica de negocio ---
-    const API_BASE_URL = 'http://localhost:3001/api';
+    // Usar la URL de API dinámica desde config.js
+    const API_BASE_URL = (window.__CONFIG__ && window.__CONFIG__.API_BASE_URL) ? window.__CONFIG__.API_BASE_URL + '/api' : 'http://localhost:3001/api';
 
     // Función genérica para fetch
     async function apiFetch(endpoint, options = {}) {
