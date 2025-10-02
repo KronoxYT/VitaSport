@@ -14,14 +14,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isElectron) {
                 result = await window.api.login(username, password);
             } else {
-                // Fallback para entorno de navegador (Live Server) usando la API REST
-                const baseUrl = (window.__CONFIG__ && window.__CONFIG__.API_BASE_URL) ? window.__CONFIG__.API_BASE_URL : 'http://localhost:3001/api';
-                const resp = await fetch(baseUrl + '/usuarios/login', {
+                // Siempre usar la URL absoluta para la API
+                const baseUrl = (window.__CONFIG__ && window.__CONFIG__.API_BASE_URL) ? window.__CONFIG__.API_BASE_URL : 'http://localhost:3001';
+                const resp = await fetch(baseUrl + '/api/usuarios/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
-                result = await resp.json();
+                // Si la respuesta no es JSON, mostrar error adecuado
+                let text = await resp.text();
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Respuesta inesperada del servidor: ' + text);
+                }
             }
 
             if (result.success) {
