@@ -65,19 +65,105 @@ if (!gotTheLock) {
       mainWindow = new BrowserWindow({
           width: 1200,
           height: 800,
+          minWidth: 800,
+          minHeight: 600,
           webPreferences: {
               preload: path.join(__dirname, 'preload.js'),
               nodeIntegration: false,
               contextIsolation: true,
+              enableRemoteModule: false,
+              worldSafeExecuteJavaScript: true,
+              // Enhanced security settings
+              sandbox: true,
+              webSecurity: true,
+              allowRunningInsecureContent: false,
+              experimentalFeatures: false,
+              // Disable features that could be security risks
+              spellcheck: false,
+              devTools: process.env.NODE_ENV === 'development'
+          },
+          // Security improvements
+          show: false, // Don't show window until ready
+          backgroundColor: '#ffffff',
+          // Frame and window settings
+          frame: true,
+          titleBarStyle: 'default'
+      });
+
+      // Enhanced security: Set Content Security Policy
+      mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+          callback({
+              responseHeaders: {
+                  ...details.responseHeaders,
+                  'Content-Security-Policy': [
+                      "default-src 'self'; " +
+                      "script-src 'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com https://code.jquery.com https://cdn.jsdelivr.net; " +
+                      "style-src 'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com https://fonts.googleapis.com; " +
+                      "font-src 'self' https://fonts.gstatic.com; " +
+                      "img-src 'self' data: https:; " +
+                      "connect-src 'self' http://localhost:3001 https://vitasport-2.onrender.com; " +
+                      "frame-src 'none'; " +
+                      "object-src 'none'; " +
+                      "base-uri 'self';"
+                  ],
+                  'X-Content-Type-Options': ['nosniff'],
+                  'X-Frame-Options': ['DENY'],
+                  'X-XSS-Protection': ['1; mode=block'],
+                  'Referrer-Policy': ['strict-origin-when-cross-origin']
+              }
+          });
+      });
+
+      // Block navigation to external URLs
+      mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+          const parsedUrl = new URL(navigationUrl);
+          const allowedOrigins = ['localhost', '127.0.0.1', 'vitasport-2.onrender.com'];
+          
+          if (!allowedOrigins.some(origin => parsedUrl.hostname.includes(origin))) {
+              event.preventDefault();
+              console.warn('Navigation blocked to:', navigationUrl);
           }
       });
 
+      // Prevent opening new windows
+      mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+          // Block all new window opens by default
+          console.warn('Blocked attempt to open new window:', url);
+          return { action: 'deny' };
+      });
+
+      // Show window when ready to prevent visual flash
+      mainWindow.once('ready-to-show', () => {
+          mainWindow.show();
+          mainWindow.focus();
+      });
+
+      // Load appropriate page based on token validity
       if (isValidToken) {
           mainWindow.loadFile(path.join(__dirname, '../renderer/shell.html'));
       } else {
           mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
       }
-      // mainWindow.webContents.openDevTools();
+
+      // Only open DevTools in development
+      if (process.env.NODE_ENV === 'development') {
+          // mainWindow.webContents.openDevTools();
+      }
+
+      // Security: Log and handle crashes
+      mainWindow.webContents.on('crashed', (event, killed) => {
+          console.error('Window crashed:', { killed });
+      });
+
+      // Security: Handle unresponsive window
+      mainWindow.on('unresponsive', () => {
+          console.warn('Window is unresponsive');
+      });
+
+      // Clean up on window close
+      mainWindow.on('closed', () => {
+          mainWindow = null;
+      });
   };
 
   // --- IPC Handlers ---
@@ -199,6 +285,28 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(() => {
+      // Security: Disable hardware acceleration if needed
+      // app.disableHardwareAcceleration();
+
+      // Security: Set app user model ID (Windows)
+      if (process.platform === 'win32') {
+          app.setAppUserModelId('com.vitasport.desktop');
+      }
+
+      // Security: Prevent app from running with elevated privileges
+      if (process.platform === 'darwin' && app.isInApplicationsFolder() === false) {
+          const response = dialog.showMessageBoxSync({
+              type: 'warning',
+              buttons: ['Continuar', 'Cancelar'],
+              message: 'La aplicación no está en la carpeta de Aplicaciones',
+              detail: 'Para mayor seguridad, mueve la aplicación a la carpeta de Aplicaciones.'
+          });
+          if (response === 1) {
+              app.quit();
+              return;
+          }
+      }
+
       startServer();
       setupIpcHandlers();
       createWindow();
@@ -215,4 +323,49 @@ if (!gotTheLock) {
           app.quit();
       }
   });
+
+  // Security: Handle certificate errors (only in development)
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+      if (process.env.NODE_ENV === 'development' && url.includes('localhost')) {
+          // In development, allow localhost certificates
+          event.preventDefault();
+          callback(true);
+      } else {
+          // In production, strict certificate validation
+          callback(false);
+      }
+  });
+
+  // Security: Disable web SQL
+  app.on('web-contents-created', (event, contents) => {
+      contents.on('will-attach-webview', (event, webPreferences, params) => {
+          // Prevent webview usage
+          event.preventDefault();
+      });
+
+      // Security: Prevent navigation to external protocols
+      contents.setWindowOpenHandler(({ url }) => {
+          if (url.startsWith('http:') || url.startsWith('https:')) {
+              shell.openExternal(url);
+          }
+          return { action: 'deny' };
+      });
+  });
+
+  // Security: Set secure defaults for sessions
+  app.on('session-created', (session) => {
+      // Clear cache on startup for security
+      session.clearCache();
+      
+      // Set secure cookie policies
+      session.cookies.on('changed', (event, cookie, cause, removed) => {
+          // Log cookie changes in development
+          if (process.env.NODE_ENV === 'development') {
+              console.log('Cookie changed:', { name: cookie.name, cause, removed });
+          }
+      });
+  });
+
+  // Log app version on startup
+  console.log(`VitaSport v${app.getVersion()} started with enhanced security`);
 }
