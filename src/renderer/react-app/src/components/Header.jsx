@@ -1,7 +1,9 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 
-export const Header = ({ user, onLogout }) => {
+// Memoize the Header component to prevent unnecessary re-renders
+export const Header = memo(({ user, onLogout }) => {
   return (
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
@@ -27,4 +29,4 @@ export const Header = ({ user, onLogout }) => {
       </div>
     </motion.header>
   );
-};
+});

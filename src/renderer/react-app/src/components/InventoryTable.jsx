@@ -1,4 +1,6 @@
-export const InventoryTable = ({ 
+import { memo } from 'react';
+
+export const InventoryTable = memo(({ 
   data, 
   onEdit, 
   onDelete 
@@ -89,4 +91,4 @@ export const InventoryTable = ({
       </table>
     </div>
   );
-};
+});

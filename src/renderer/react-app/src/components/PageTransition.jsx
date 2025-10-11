@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const pageVariants = {
@@ -23,7 +24,7 @@ const pageVariants = {
   },
 };
 
-export const PageTransition = ({ children }) => {
+export const PageTransition = memo(({ children }) => {
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -36,4 +37,4 @@ export const PageTransition = ({ children }) => {
       </motion.div>
     </AnimatePresence>
   );
-};
+});
