@@ -1,41 +1,101 @@
+/* Optimized: Use font-display: swap for better performance */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-background text-gray-900 font-sans antialiased;
+/* Base styles */
+body {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background-color: #f9fafb;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Component styles */
+.btn-primary {
+  background-color: var(--color-primary, #3b82f6);
+  color: white;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 200ms;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark, #2563eb);
+}
+
+.input-primary {
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.input-primary:focus {
+  border-color: var(--color-primary, #3b82f6);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+/* Performance-optimized animations using CSS instead of JS */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-  }
-  
-  .input-primary {
-    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary;
-  }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm p-6;
-  }
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s ease-out forwards;
+  animation-fill-mode: both;
 }
 
-/* Animaciones suaves */
+/* Smooth fade transitions */
 .fade-enter {
   opacity: 0;
 }
+
 .fade-enter-active {
   opacity: 1;
   transition: opacity 200ms ease-in;
 }
+
 .fade-exit {
   opacity: 1;
 }
+
 .fade-exit-active {
   opacity: 0;
   transition: opacity 200ms ease-in;
+}
+
+/* Performance hints for browsers */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
 }

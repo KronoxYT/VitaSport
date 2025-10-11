@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from 'react'
+import React, { createContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { post } from '../api'
 
 export const AuthContext = createContext()
@@ -20,7 +20,8 @@ export function AuthProvider({ children }) {
     else sessionStorage.removeItem('user')
   }, [user])
 
-  async function login(username, password) {
+  // Memoize login function to prevent unnecessary re-renders
+  const login = useCallback(async (username, password) => {
     const data = await post('/api/usuarios/login', { username, password })
     if (data.success) {
       setToken(data.token)
@@ -28,16 +29,23 @@ export function AuthProvider({ children }) {
       return { success: true }
     }
     return { success: false, message: data.message }
-  }
+  }, [])
 
-  function logout() {
+  // Memoize logout function to prevent unnecessary re-renders
+  const logout = useCallback(() => {
     setToken(null)
     setUser(null)
     sessionStorage.clear()
-  }
+  }, [])
+
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo(
+    () => ({ user, token, login, logout }),
+    [user, token, login, logout]
+  )
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )

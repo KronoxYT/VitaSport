@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 
 const toastVariants = {
@@ -18,7 +19,7 @@ const toastVariants = {
   },
 };
 
-export const Toast = ({ 
+export const Toast = memo(({ 
   message, 
   type = 'success', 
   onClose,
@@ -55,4 +56,4 @@ export const Toast = ({
       </div>
     </motion.div>
   );
-};
+});

@@ -1,7 +1,8 @@
-import { motion } from 'framer-motion';
+import { memo } from 'react';
 
-export const Button = ({ children, variant = 'primary', className = '', ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+// Use CSS-based transitions instead of framer-motion for better performance
+export const Button = memo(({ children, variant = 'primary', className = '', ...props }) => {
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 hover:scale-[1.02]';
   
   const variants = {
     primary: 'bg-primary hover:bg-primary/90 text-white focus:ring-primary',
@@ -10,13 +11,11 @@ export const Button = ({ children, variant = 'primary', className = '', ...props
   };
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+    <button
       className={`${baseClasses} ${variants[variant]} ${className}`}
       {...props}
     >
       {children}
-    </motion.button>
+    </button>
   );
-};
+});

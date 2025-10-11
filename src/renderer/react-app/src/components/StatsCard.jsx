@@ -1,4 +1,6 @@
-export const StatsCard = ({ 
+import { memo } from 'react';
+
+export const StatsCard = memo(({ 
   title, 
   value, 
   trend, 
@@ -29,4 +31,4 @@ export const StatsCard = ({
       </div>
     </div>
   );
-};
+});

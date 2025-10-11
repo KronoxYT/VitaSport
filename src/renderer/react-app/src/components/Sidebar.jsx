@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   HomeIcon,
@@ -15,11 +16,13 @@ const menuItems = [
   { id: 'settings', label: 'Configuración', icon: Cog6ToothIcon },
 ];
 
-export const Sidebar = ({ active, onNavigate }) => {
+// Memoize the Sidebar component to prevent unnecessary re-renders
+export const Sidebar = memo(({ active, onNavigate }) => {
   return (
     <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.2 }}
       className="bg-white w-64 min-h-screen shadow-sm py-6"
     >
       <nav className="space-y-1 px-3">
@@ -33,11 +36,11 @@ export const Sidebar = ({ active, onNavigate }) => {
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-5 w-5" aria-hidden="true" />
             <span>{label}</span>
           </button>
         ))}
       </nav>
     </motion.aside>
   );
-};
+});

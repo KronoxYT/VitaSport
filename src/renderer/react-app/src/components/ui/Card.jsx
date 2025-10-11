@@ -1,32 +1,17 @@
-import { motion } from 'framer-motion';
+import { memo } from 'react';
 
-const cardVariants = {
-  hidden: {
-    opacity: 0,
-    y: 20,
-  },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.4,
-      ease: [0.61, 1, 0.88, 1],
-    },
-  }),
-};
+// Use CSS-based animations instead of framer-motion for better performance
+export const Card = memo(({ children, index = 0, className = '' }) => {
+  const animationStyle = {
+    animationDelay: `${index * 0.1}s`
+  };
 
-export const Card = ({ children, index = 0, className = '' }) => {
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      animate="visible"
-      custom={index}
-      whileHover={{ y: -2 }}
-      className={`bg-white rounded-xl shadow-sm ${className}`}
+    <div
+      style={animationStyle}
+      className={`bg-white rounded-xl shadow-sm transition-transform duration-200 hover:-translate-y-0.5 animate-fadeInUp ${className}`}
     >
       {children}
-    </motion.div>
+    </div>
   );
-};
+});

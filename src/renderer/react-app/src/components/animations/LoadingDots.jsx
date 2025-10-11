@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 
 const loadingContainerVariants = {
@@ -29,7 +30,7 @@ const loadingCircleTransition = {
   ease: 'easeInOut',
 };
 
-export const LoadingDots = ({ className = '' }) => {
+export const LoadingDots = memo(({ className = '' }) => {
   return (
     <motion.div
       className={`flex space-x-2 ${className}`}
@@ -47,4 +48,4 @@ export const LoadingDots = ({ className = '' }) => {
       ))}
     </motion.div>
   );
-};
+});
