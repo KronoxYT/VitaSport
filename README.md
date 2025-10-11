@@ -1,3 +1,3 @@
 Pagina de VitaSport = APP Web
 
-vita-sport.vercel.app
+https://vita-sport.vercel.app/login
