@@ -1,38 +1,37 @@
 {
-  "identifier": "com.vitasport.desktop",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "VitaSport",
   "version": "0.1.0",
-
+  "identifier": "com.vitasport.desktop",
+  "build": {
+    "frontendDist": "src/renderer/react-app/dist",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "cd src/renderer/react-app && npm ci && npm run dev",
+    "beforeBuildCommand": "npm run build:renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "VitaSport",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "dmg", "msi"],
-    "resources": ["vitasport.sqlite"]
-  },
-
-  "updater": {
-    "active": false
-  },
-
-  "windows": [
-    {
-      "title": "VitaSport",
-      "fullscreen": false,
-      "resizable": true
-    }
-  ],
-
-  "security": {
-    "csp": "default-src 'self'"
-  },
-
-  "allowlist": {
-    "all": true
-  },
-
-  "build": {
-    "beforeBuildCommand": "npm run build:renderer",
-    "beforeDevCommand": "cd src/renderer/react-app && npm ci && npm run dev",
-    "devPath": "http://localhost:3000",
-    "distDir": "src/renderer/react-app/dist"
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }
