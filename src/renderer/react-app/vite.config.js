@@ -4,6 +4,8 @@ import viteCompression from 'vite-plugin-compression'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Use relative base so built files work inside Tauri bundle
+  base: './',
   plugins: [
     react({
       // Enable Fast Refresh

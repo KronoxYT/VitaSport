@@ -559,6 +559,16 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="./config.js"></script>
     <script>
+        // Intentar cargar puente de Tauri si existe
+        (function(){
+            const s = document.createElement('script');
+            s.src = './tauri-bridge.js';
+            s.type = 'module';
+            s.onerror = () => {};
+            document.head.appendChild(s);
+        })();
+    </script>
+    <script>
         // ========================================
         // Shell Enhancement Script
         // ========================================

@@ -1,0 +1,38 @@
+{
+  "identifier": "com.vitasport.desktop",
+  "productName": "VitaSport",
+  "version": "0.1.0",
+
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "dmg", "msi"],
+    "resources": ["vitasport.sqlite"]
+  },
+
+  "updater": {
+    "active": false
+  },
+
+  "windows": [
+    {
+      "title": "VitaSport",
+      "fullscreen": false,
+      "resizable": true
+    }
+  ],
+
+  "security": {
+    "csp": "default-src 'self'"
+  },
+
+  "allowlist": {
+    "all": true
+  },
+
+  "build": {
+    "beforeBuildCommand": "npm run build:renderer",
+    "beforeDevCommand": "cd src/renderer/react-app && npm ci && npm run dev",
+    "devPath": "http://localhost:3000",
+    "distDir": "src/renderer/react-app/dist"
+  }
+}

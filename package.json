@@ -5,6 +5,13 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
+  "tauri:dev": "tauri dev",
+  "tauri:build": "tauri build",
+  "build:renderer": "cd src/renderer/react-app && npm ci && npm run build",
+  "start-api": "node src/server.js",
+  "start-renderer": "cd src/renderer/react-app && npm ci && npm run dev",
+  "dev": "concurrently \"npm run start-api\" \"npm run start-renderer\"",
+  "prepare-tauri": "npm run build:renderer",
     "test": "jest",
     "db:migrate": "node src/database/migrate.js",
     "build": "electron-builder"
@@ -35,6 +42,7 @@
   "author": "KronoxYT",
   "license": "ISC",
   "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "express": "^4.18.2",
@@ -44,10 +52,11 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "electron": "27.3.0",
+    "concurrently": "^8.2.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "electron": "^38.2.2",
     "electron-builder": "^26.0.12",
     "jest": "^29.7.0",
     "supertest": "^7.1.4"
   }
 }
-

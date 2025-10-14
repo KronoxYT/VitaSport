@@ -537,6 +537,16 @@
     </div>
 
     <script src="./config.js"></script>
+    <script>
+        // Intentar cargar puente de Tauri si existe (no rompe en Electron/Web)
+        (function(){
+            const s = document.createElement('script');
+            s.src = './tauri-bridge.js';
+            s.type = 'module';
+            s.onerror = () => {};
+            document.head.appendChild(s);
+        })();
+    </script>
     <script src="./renderer.js"></script>
 </body>
 </html>

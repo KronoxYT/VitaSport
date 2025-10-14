@@ -1,0 +1,14 @@
+[package]
+name = "vitasport-tauri"
+version = "0.1.0"
+authors = ["KronoxYT"]
+edition = "2021"
+
+[dependencies]
+# Tauri dependencies
+tauri = { version = "1.4.6", features = ["api-all"] }
+
+[build-dependencies]
+
+[package.metadata]
+
