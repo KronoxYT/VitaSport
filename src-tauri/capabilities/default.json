@@ -4,28 +4,44 @@
   "windows": ["main"],
   "permissions": [
     {
-      "identifier": "shell:open",
-      "allow": [{"name": "open"}]
-    },
-    {
-      "identifier": "fs:all",
+      "identifier": "core:default",
       "allow": [{"name": "*"}]
     },
     {
-      "identifier": "http:all",
+      "identifier": "core:window:default",
       "allow": [{"name": "*"}]
     },
     {
-      "identifier": "window:create",
-      "allow": [{"name": "create"}]
+      "identifier": "core:webview:default",
+      "allow": [{"name": "*"}]
     },
     {
-      "identifier": "window:center",
-      "allow": [{"name": "center"}]
+      "identifier": "core:path:default",
+      "allow": [{"name": "*"}]
     },
     {
-      "identifier": "window:close",
-      "allow": [{"name": "close"}]
+      "identifier": "core:resources:default",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "core:event:default",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "core:menu:default",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "core:tray:default",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "core:image:default",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "log:default",
+      "allow": [{"name": "*"}]
     }
   ]
 }
