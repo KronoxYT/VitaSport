@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { get } from '../api'
+import React, { useState, useEffect } from 'react'
+import { getProductos, getVentas, getDashboardKPIs } from '../api'
 
 export default function Dashboard() {
   const [productosCount, setProductosCount] = useState('--')
@@ -9,18 +9,18 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const p = await get('/api/productos')
+        const p = await getProductos()
         setProductosCount(p.success ? p.productos.length : '--')
       } catch (e) { setProductosCount('--') }
 
       try {
-        const v = await get('/api/ventas')
+        const v = await getVentas()
         setVentasCount(v.success ? v.ventas.length : '--')
       } catch (e) { setVentasCount('--') }
 
       try {
-        const a = await get('/api/alertas/stock-bajo')
-        setAlertas(a.success ? a.alertas : [])
+        const kpis = await getDashboardKPIs()
+        setAlertas(kpis.success ? kpis.alertas : [])
       } catch (e) { setAlertas([]) }
     }
     load()
@@ -29,27 +29,32 @@ export default function Dashboard() {
   return (
     <div className="container mt-4">
       <h2>Dashboard</h2>
-      <div className="row mt-3">
-        <div className="col-sm-4">
-          <div className="card p-3">
-            <h6>Productos Totales</h6>
-            <div style={{fontSize:24,fontWeight:600}}>{productosCount}</div>
+      <div className="row">
+        <div className="col-md-4">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title">Productos</h5>
+              <h2 className="text-primary">{productosCount}</h2>
+            </div>
           </div>
         </div>
-        <div className="col-sm-4">
-          <div className="card p-3">
-            <h6>Ventas Totales (Unidades)</h6>
-            <div style={{fontSize:24,fontWeight:600}}>{ventasCount}</div>
+        <div className="col-md-4">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title">Ventas</h5>
+              <h2 className="text-success">{ventasCount}</h2>
+            </div>
           </div>
         </div>
-        <div className="col-sm-4">
-          <div className="card p-3">
-            <h6>Alertas de Stock Bajo</h6>
-            <div>{alertas.length} items</div>
+        <div className="col-md-4">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title">Alertas</h5>
+              <h2 className="text-warning">{alertas.length}</h2>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   )
 }

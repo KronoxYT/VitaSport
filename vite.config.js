@@ -1,10 +1,15 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: "./",
+  plugins: [react()],
+  base: './',
   build: {
-    outDir: "dist",
+    outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      external: ['@tauri-apps/api/tauri', '@tauri-apps/api/shell', '@tauri-apps/api/path']
+    }
   },
   server: {
     port: 5173,

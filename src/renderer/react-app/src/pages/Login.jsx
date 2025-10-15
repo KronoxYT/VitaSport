@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { post } from '../api'
+import { login } from '../api'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -11,7 +11,7 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault()
     try {
-      const data = await post('/api/usuarios/login', { username, password })
+      const data = await login(username, password)
       if (data.success) {
         sessionStorage.setItem('token', data.token)
         sessionStorage.setItem('user', JSON.stringify(data.user || {}))

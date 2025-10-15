@@ -6,8 +6,8 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:5173",
-    "distDir": "../dist"
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [
@@ -35,26 +35,6 @@
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": ""
-    }
-  },
-  "permissions": {
-    "shell": {
-      "all": false,
-      "open": true
-    },
-    "fs": {
-      "all": true,
-      "scope": ["$APPDATA/*", "$RESOURCE/*"]
-    },
-    "http": {
-      "all": true,
-      "scope": ["http://localhost:*", "https://*"]
-    },
-    "window": {
-      "all": false,
-      "create": true,
-      "center": true,
-      "close": true
     }
   }
 }

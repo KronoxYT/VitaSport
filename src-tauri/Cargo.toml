@@ -24,3 +24,10 @@ log = "0.4"
 tauri = { version = "2.8.5", features = [] }
 tauri-plugin-log = "2"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true

@@ -1,11 +1,31 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "description": "Default capabilities for VitaSport",
+  "windows": ["main"],
   "permissions": [
-    "core:default"
+    {
+      "identifier": "shell:open",
+      "allow": [{"name": "open"}]
+    },
+    {
+      "identifier": "fs:all",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "http:all",
+      "allow": [{"name": "*"}]
+    },
+    {
+      "identifier": "window:create",
+      "allow": [{"name": "create"}]
+    },
+    {
+      "identifier": "window:center",
+      "allow": [{"name": "center"}]
+    },
+    {
+      "identifier": "window:close",
+      "allow": [{"name": "close"}]
+    }
   ]
 }
