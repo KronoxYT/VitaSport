@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState, useMemo, useCallback } from 'react'
-import { post } from '../api'
+import { login as apiLogin, saveToken, getToken, clearToken, getCurrentUser } from '../api'
 
 export const AuthContext = createContext()
 
@@ -22,20 +22,26 @@ export function AuthProvider({ children }) {
 
   // Memoize login function to prevent unnecessary re-renders
   const login = useCallback(async (username, password) => {
-    const data = await post('/api/usuarios/login', { username, password })
-    if (data.success) {
-      setToken(data.token)
-      setUser(data.user || { username })
-      return { success: true }
+    try {
+      const data = await apiLogin(username, password)
+      if (data.success) {
+        setToken(data.token)
+        setUser(data.user || { username })
+        await saveToken(data.token)
+        return { success: true }
+      }
+      return { success: false, message: data.message }
+    } catch (error) {
+      return { success: false, message: error.message }
     }
-    return { success: false, message: data.message }
   }, [])
 
   // Memoize logout function to prevent unnecessary re-renders
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setToken(null)
     setUser(null)
     sessionStorage.clear()
+    await clearToken()
   }, [])
 
   // Memoize context value to prevent unnecessary re-renders of consumers
