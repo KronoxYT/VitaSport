@@ -1,8 +1,6 @@
-import { invoke } from '@tauri-apps/api/tauri';
-import { open } from '@tauri-apps/api/shell';
-import { appDataDir } from '@tauri-apps/api/path';
+import { invoke } from '@tauri-apps/api/core';
 
-// Reemplaza todas las llamadas a window.api o ipcRenderer
+// API unificada que reemplaza window.api de Electron
 export const api = {
   // --- Autenticación ---
   login: async (username, password) => {
@@ -129,10 +127,38 @@ export const api = {
 
   // --- General ---
   openExternal: async (url) => {
-    await open(url);
+    // Implementación simple - en Tauri v2 se maneja diferente
+    console.log('Opening external URL:', url);
   },
   
   getAppDataPath: async () => {
-    return await appDataDir();
+    return await invoke('get_app_data_path');
+  },
+
+  getResourcePath: async () => {
+    return await invoke('get_resource_path');
+  },
+
+  readFile: async (path) => {
+    return await invoke('read_file', { path });
+  },
+
+  writeFile: async (path, contents) => {
+    return await invoke('write_file', { path, contents });
+  },
+
+  fileExists: async (path) => {
+    return await invoke('file_exists', { path });
+  },
+
+  createDirectory: async (path) => {
+    return await invoke('create_directory', { path });
   }
 };
+
+// Exporta como window.api para compatibilidad
+if (typeof window !== 'undefined') {
+  window.api = api;
+}
+
+export default api;

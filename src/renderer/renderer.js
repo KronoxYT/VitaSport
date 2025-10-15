@@ -315,8 +315,8 @@ class SessionManager {
     }
 
     logout() {
-        const isElectron = typeof window.api !== 'undefined';
-        if (isElectron) {
+        const isTauri = typeof window.api !== 'undefined';
+        if (isTauri) {
             window.api.clearToken();
         }
         this.cookieManager.deleteCookie('lastActivity');
@@ -401,8 +401,8 @@ class LoginApp {
                     
                     // Redirect after short delay
                     setTimeout(() => {
-                        const isElectron = typeof window.api !== 'undefined';
-                        if (isElectron) {
+                        const isTauri = typeof window.api !== 'undefined';
+                        if (isTauri) {
                             window.api.saveToken(result.token);
                             window.location.href = 'shell.html';
                         } else {
@@ -427,9 +427,9 @@ class LoginApp {
     }
 
     async performLogin(username, password) {
-        const isElectron = typeof window.api !== 'undefined' && typeof window.api.login === 'function';
+        const isTauri = typeof window.api !== 'undefined' && typeof window.api.login === 'function';
         
-        if (isElectron) {
+        if (isTauri) {
             return await window.api.login(username, password);
         } else {
             const baseUrl = (window.__CONFIG__ && window.__CONFIG__.API_BASE_URL) 
