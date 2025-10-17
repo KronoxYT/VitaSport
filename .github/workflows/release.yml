@@ -1,38 +1,112 @@
-name: Release Build
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        platform: [windows-latest, ubuntu-latest]
-    
-    runs-on: ${{ matrix.platform }}
-    
+        platform:
+          - os: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            name: windows-x64
+          - os: windows-latest
+            rust_target: i686-pc-windows-msvc
+            name: windows-x32
+          - os: ubuntu-22.04
+            rust_target: x86_64-unknown-linux-gnu
+            name: linux-x64
+
+    runs-on: ${{ matrix.platform.os }}
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      
-      - name: Install Rust
+          cache: 'npm'
+
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-      
-      - name: Install dependencies
+        with:
+          targets: ${{ matrix.platform.rust_target }}
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
         run: npm ci
-      
-      - name: Build Tauri
-        run: npm run tauri:build
-      
-      - name: Upload Release
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'VitaSport ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🚀 VitaSport ${{ github.ref_name }}
+            
+            ### Descargas:
+            - **Windows 64-bit**: `VitaSport_${{ github.ref_name }}_x64_en-US.msi`
+            - **Windows 32-bit**: `VitaSport_${{ github.ref_name }}_x86_en-US.msi`
+            - **Linux**: `vitasport_${{ github.ref_name }}_amd64.AppImage`
+            
+            ### Cambios en esta versión:
+            - Migración completa a Tauri
+            - Mejor rendimiento y menor tamaño
+            - Builds automáticos con GitHub Actions
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.platform.rust_target }}
+
+  create-updater-json:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create updater JSON
+        run: |
+          cat > latest.json << EOF
+          {
+            "version": "${{ github.ref_name }}",
+            "notes": "VitaSport ${{ github.ref_name }} disponible",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "",
+                "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/VitaSport_${{ github.ref_name }}_x64_en-US.msi.zip"
+              },
+              "linux-x86_64": {
+                "signature": "",
+                "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/vitasport_${{ github.ref_name }}_amd64.AppImage.tar.gz"
+              }
+            }
+          }
+          EOF
+
+      - name: Upload updater JSON
         uses: softprops/action-gh-release@v1
         with:
-          files: src-tauri/target/release/bundle/**/*
+          tag_name: ${{ github.ref_name }}
+          files: latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
