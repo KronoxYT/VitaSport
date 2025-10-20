@@ -1,6 +1,0 @@
-{
-    "github.copilot.nextEditSuggestions.enabled": false,
-    "editor.linkedEditing": true,
-    "testing.automaticallyOpenPeekViewDuringAutoRun": true,
-    "files.autoSave": "afterDelay"
-}

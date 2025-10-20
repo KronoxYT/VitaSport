@@ -1,356 +1,232 @@
+// Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, State};
+use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use std::fs;
-use std::path::PathBuf;
-use rusqlite::{Connection, Result as SqliteResult, params};
+use tauri::State;
 
-// Estado global de la aplicación
-struct AppState {
-    db: Mutex<Option<Connection>>,
+// Database models
+#[derive(Debug, Serialize, Deserialize)]
+struct Product {
+    id: Option<i32>,
+    name: String,
+    sku: String,
+    category: String,
+    price: f64,
+    stock: i32,
+    min_stock: i32,
+    description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ApiResponse {
-    success: bool,
-    data: Option<serde_json::Value>,
-    message: Option<String>,
+struct Sale {
+    id: Option<i32>,
+    date: String,
+    client: String,
+    total: f64,
+    status: String,
 }
 
-// Inicializar base de datos SQLite
-fn init_database(app_handle: &tauri::AppHandle) -> Result<Connection, String> {
-    let app_data_dir = app_handle.path_resolver()
-        .app_data_dir()
-        .ok_or("No se pudo obtener directorio de datos")?;
-    
-    std::fs::create_dir_all(&app_data_dir)
-        .map_err(|e| format!("Error creando directorio: {}", e))?;
-    
-    let db_path = app_data_dir.join("vitasport.db");
-    let conn = Connection::open(&db_path)
-        .map_err(|e| format!("Error abriendo base de datos: {}", e))?;
-    
-    // Crear tablas si no existen
+#[derive(Debug, Serialize, Deserialize)]
+struct InventoryMovement {
+    id: Option<i32>,
+    product_id: i32,
+    movement_type: String, // "entrada" or "salida"
+    quantity: i32,
+    date: String,
+    notes: Option<String>,
+}
+
+// Database state
+struct AppState {
+    db: Mutex<Connection>,
+}
+
+// Initialize database
+fn init_database() -> Result<Connection> {
+    let conn = Connection::open("vitasport.db")?;
+
+    // Create products table
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS usuarios (
+        "CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            nombre TEXT NOT NULL,
-            email TEXT,
-            rol TEXT DEFAULT 'usuario',
-            activo BOOLEAN DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            name TEXT NOT NULL,
+            sku TEXT UNIQUE NOT NULL,
+            category TEXT NOT NULL,
+            price REAL NOT NULL,
+            stock INTEGER NOT NULL DEFAULT 0,
+            min_stock INTEGER NOT NULL DEFAULT 5,
+            description TEXT
         )",
         [],
-    ).map_err(|e| format!("Error creando tabla usuarios: {}", e))?;
-    
+    )?;
+
+    // Create sales table
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS productos (
+        "CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            descripcion TEXT,
-            precio DECIMAL(10,2) NOT NULL,
-            stock INTEGER DEFAULT 0,
-            stock_minimo INTEGER DEFAULT 5,
-            categoria TEXT,
-            imagen_url TEXT,
-            activo BOOLEAN DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            date TEXT NOT NULL,
+            client TEXT NOT NULL,
+            total REAL NOT NULL,
+            status TEXT NOT NULL
         )",
         [],
-    ).map_err(|e| format!("Error creando tabla productos: {}", e))?;
-    
+    )?;
+
+    // Create inventory movements table
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS stock_movements (
+        "CREATE TABLE IF NOT EXISTS inventory_movements (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            producto_id INTEGER NOT NULL,
-            tipo TEXT NOT NULL,
-            cantidad INTEGER NOT NULL,
-            motivo TEXT,
-            usuario_id INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (producto_id) REFERENCES productos (id),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+            product_id INTEGER NOT NULL,
+            movement_type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            notes TEXT,
+            FOREIGN KEY (product_id) REFERENCES products(id)
         )",
         [],
-    ).map_err(|e| format!("Error creando tabla stock_movements: {}", e))?;
+    )?;
+
+    // Insert sample data if empty
+    let count: i32 = conn.query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))?;
     
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS ventas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            producto_id INTEGER NOT NULL,
-            cantidad INTEGER NOT NULL,
-            precio_unitario DECIMAL(10,2) NOT NULL,
-            total DECIMAL(10,2) NOT NULL,
-            usuario_id INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (producto_id) REFERENCES productos (id),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-        )",
-        [],
-    ).map_err(|e| format!("Error creando tabla ventas: {}", e))?;
-    
-    // Crear usuario admin por defecto si no existe
-    let admin_exists: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM usuarios WHERE username = 'admin')",
-        [],
-        |row| row.get(0)
-    ).unwrap_or(false);
-    
-    if !admin_exists {
-        let password_hash = bcrypt::hash("admin", bcrypt::DEFAULT_COST)
-            .map_err(|e| format!("Error hasheando password: {}", e))?;
-        
+    if count == 0 {
         conn.execute(
-            "INSERT INTO usuarios (username, password_hash, nombre, email, rol) VALUES (?, ?, ?, ?, ?)",
-            params!["admin", &password_hash, "Administrador", "admin@vitasport.com", "admin"]
-        ).map_err(|e| format!("Error creando usuario admin: {}", e))?;
+            "INSERT INTO products (name, sku, category, price, stock, min_stock, description) VALUES 
+            ('Proteína Whey 2kg', 'PROT-001', 'Suplementos', 45000, 28, 10, 'Proteína de suero de leche premium'),
+            ('Creatina Monohidrato 500g', 'CREA-001', 'Suplementos', 32000, 15, 5, 'Creatina pura micronizada'),
+            ('BCAA 400g', 'BCAA-001', 'Aminoácidos', 28000, 42, 10, 'Aminoácidos ramificados 2:1:1'),
+            ('Pre-Workout 300g', 'PRE-001', 'Energéticos', 38000, 8, 5, 'Fórmula pre-entreno avanzada')",
+            [],
+        )?;
     }
-    
+
     Ok(conn)
 }
 
-// --- Comandos de Autenticación ---
+// Tauri commands
 #[tauri::command]
-async fn login(username: String, password: String) -> Result<ApiResponse, String> {
-    let body = serde_json::json!({
-        "username": username,
-        "password": password
-    });
-    api_request("POST", "/usuarios/login", Some(body)).await
-}
-
-#[tauri::command]
-async fn verify_token(token: String) -> Result<ApiResponse, String> {
-    let body = serde_json::json!({ "token": token });
-    api_request("POST", "/usuarios/verify", Some(body)).await
-}
-
-#[tauri::command]
-async fn save_token(token: String) -> Result<(), String> {
-    // Guardar token en archivo local
-    let app_data_dir = tauri::api::path::app_data_dir(&tauri::Config::default())
-        .ok_or("No se pudo obtener directorio de datos")?;
-    let token_path = app_data_dir.join("session.json");
-    
-    let token_data = serde_json::json!({ "token": token });
-    fs::write(&token_path, serde_json::to_string(&token_data)?)
+fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, name, sku, category, price, stock, min_stock, description FROM products")
         .map_err(|e| e.to_string())?;
-    
+
+    let products = stmt
+        .query_map([], |row| {
+            Ok(Product {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                sku: row.get(2)?,
+                category: row.get(3)?,
+                price: row.get(4)?,
+                stock: row.get(5)?,
+                min_stock: row.get(6)?,
+                description: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(products)
+}
+
+#[tauri::command]
+fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO products (name, sku, category, price, stock, min_stock, description) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        [
+            &product.name,
+            &product.sku,
+            &product.category,
+            &product.price.to_string(),
+            &product.stock.to_string(),
+            &product.min_stock.to_string(),
+            &product.description.unwrap_or_default(),
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn update_product(state: State<AppState>, product: Product) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE products SET name=?1, sku=?2, category=?3, price=?4, stock=?5, min_stock=?6, description=?7 
+         WHERE id=?8",
+        [
+            &product.name,
+            &product.sku,
+            &product.category,
+            &product.price.to_string(),
+            &product.stock.to_string(),
+            &product.min_stock.to_string(),
+            &product.description.unwrap_or_default(),
+            &product.id.unwrap().to_string(),
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
 #[tauri::command]
-async fn get_token() -> Result<Option<String>, String> {
-    let app_data_dir = tauri::api::path::app_data_dir(&tauri::Config::default())
-        .ok_or("No se pudo obtener directorio de datos")?;
-    let token_path = app_data_dir.join("session.json");
-    
-    if token_path.exists() {
-        let content = fs::read_to_string(&token_path).map_err(|e| e.to_string())?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-        Ok(data["token"].as_str().map(|s| s.to_string()))
-    } else {
-        Ok(None)
-    }
-}
+fn delete_product(state: State<AppState>, id: i32) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM products WHERE id=?1", [id])
+        .map_err(|e| e.to_string())?;
 
-#[tauri::command]
-async fn clear_token() -> Result<(), String> {
-    let app_data_dir = tauri::api::path::app_data_dir(&tauri::Config::default())
-        .ok_or("No se pudo obtener directorio de datos")?;
-    let token_path = app_data_dir.join("session.json");
-    
-    if token_path.exists() {
-        fs::remove_file(&token_path).map_err(|e| e.to_string())?;
-    }
-    
     Ok(())
 }
 
 #[tauri::command]
-async fn get_current_user() -> Result<Option<serde_json::Value>, String> {
-    if let Some(token) = get_token().await? {
-        let verification = verify_token(token).await?;
-        if verification.success {
-            Ok(verification.data)
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(None)
-    }
-}
+fn get_low_stock_products(state: State<AppState>) -> Result<Vec<Product>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, name, sku, category, price, stock, min_stock, description 
+                  FROM products WHERE stock <= min_stock")
+        .map_err(|e| e.to_string())?;
 
-// --- Comandos de Productos ---
-#[tauri::command]
-async fn get_productos() -> Result<ApiResponse, String> {
-    api_request("GET", "/productos", None).await
-}
+    let products = stmt
+        .query_map([], |row| {
+            Ok(Product {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                sku: row.get(2)?,
+                category: row.get(3)?,
+                price: row.get(4)?,
+                stock: row.get(5)?,
+                min_stock: row.get(6)?,
+                description: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
 
-#[tauri::command]
-async fn get_producto_by_id(id: i32) -> Result<ApiResponse, String> {
-    api_request("GET", &format!("/productos/{}", id), None).await
-}
-
-#[tauri::command]
-async fn create_producto(data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("POST", "/productos", Some(data)).await
-}
-
-#[tauri::command]
-async fn update_producto(id: i32, data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("PUT", &format!("/productos/{}", id), Some(data)).await
-}
-
-#[tauri::command]
-async fn delete_producto(id: i32) -> Result<ApiResponse, String> {
-    api_request("DELETE", &format!("/productos/{}", id), None).await
-}
-
-// --- Comandos de Usuarios ---
-#[tauri::command]
-async fn get_usuarios() -> Result<ApiResponse, String> {
-    api_request("GET", "/usuarios", None).await
-}
-
-#[tauri::command]
-async fn get_usuario_by_id(id: i32) -> Result<ApiResponse, String> {
-    api_request("GET", &format!("/usuarios/{}", id), None).await
-}
-
-#[tauri::command]
-async fn create_usuario(data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("POST", "/usuarios", Some(data)).await
-}
-
-#[tauri::command]
-async fn update_usuario(id: i32, data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("PUT", &format!("/usuarios/{}", id), Some(data)).await
-}
-
-#[tauri::command]
-async fn delete_usuario(id: i32) -> Result<ApiResponse, String> {
-    api_request("DELETE", &format!("/usuarios/{}", id), None).await
-}
-
-// --- Comandos de Stock ---
-#[tauri::command]
-async fn get_stock_movements(product_id: i32) -> Result<ApiResponse, String> {
-    api_request("GET", &format!("/stock/{}", product_id), None).await
-}
-
-#[tauri::command]
-async fn create_stock_movement(data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("POST", "/stock", Some(data)).await
-}
-
-// --- Comandos de Ventas ---
-#[tauri::command]
-async fn get_ventas() -> Result<ApiResponse, String> {
-    api_request("GET", "/ventas", None).await
-}
-
-#[tauri::command]
-async fn create_venta(data: serde_json::Value) -> Result<ApiResponse, String> {
-    api_request("POST", "/ventas", Some(data)).await
-}
-
-#[tauri::command]
-async fn delete_venta(id: i32) -> Result<ApiResponse, String> {
-    api_request("DELETE", &format!("/ventas/{}", id), None).await
-}
-
-// --- Comandos de Dashboard ---
-#[tauri::command]
-async fn get_dashboard_kpis() -> Result<ApiResponse, String> {
-    api_request("GET", "/estadisticas/dashboard", None).await
-}
-
-#[tauri::command]
-async fn get_sales_by_month() -> Result<ApiResponse, String> {
-    api_request("GET", "/estadisticas/ventas-mes", None).await
-}
-
-#[tauri::command]
-async fn get_sales_by_product() -> Result<ApiResponse, String> {
-    api_request("GET", "/estadisticas/ventas-producto", None).await
-}
-
-// --- Comandos de Reportes ---
-#[tauri::command]
-async fn export_inventory_pdf() -> Result<ApiResponse, String> {
-    api_request("GET", "/reportes/inventario/pdf", None).await
-}
-
-#[tauri::command]
-async fn export_sales_pdf() -> Result<ApiResponse, String> {
-    api_request("GET", "/reportes/ventas/pdf", None).await
-}
-
-#[tauri::command]
-async fn export_general_pdf() -> Result<ApiResponse, String> {
-    api_request("GET", "/reportes/general/pdf", None).await
-}
-
-#[tauri::command]
-async fn export_sales_csv() -> Result<ApiResponse, String> {
-    api_request("GET", "/ventas/csv", None).await
-}
-
-// --- Comandos Generales ---
-#[tauri::command]
-async fn select_image() -> Result<Option<String>, String> {
-    // Implementación simple para selección de archivos
-    // En Tauri v2 se maneja diferente
-    let file_path = None;
-    
-    Ok(file_path.map(|p| p.to_string_lossy().to_string()))
+    Ok(products)
 }
 
 fn main() {
+    let db = init_database().expect("Failed to initialize database");
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
+        .manage(AppState { db: Mutex::new(db) })
         .invoke_handler(tauri::generate_handler![
-            // Autenticación
-            login,
-            verify_token,
-            save_token,
-            get_token,
-            clear_token,
-            get_current_user,
-            // Productos
-            get_productos,
-            get_producto_by_id,
-            create_producto,
-            update_producto,
-            delete_producto,
-            // Usuarios
-            get_usuarios,
-            get_usuario_by_id,
-            create_usuario,
-            update_usuario,
-            delete_usuario,
-            // Stock
-            get_stock_movements,
-            create_stock_movement,
-            // Ventas
-            get_ventas,
-            create_venta,
-            delete_venta,
-            // Dashboard
-            get_dashboard_kpis,
-            get_sales_by_month,
-            get_sales_by_product,
-            // Reportes
-            export_inventory_pdf,
-            export_sales_pdf,
-            export_general_pdf,
-            export_sales_csv,
-            // General
-            select_image
+            get_products,
+            add_product,
+            update_product,
+            delete_product,
+            get_low_stock_products,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
