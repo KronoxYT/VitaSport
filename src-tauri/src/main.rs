@@ -8,34 +8,64 @@ use tauri::State;
 
 // Database models
 #[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: Option<i32>,
+    username: String,
+    password_hash: String,
+    role: String,
+    fullname: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct Product {
     id: Option<i32>,
+    sku: Option<String>,
     name: String,
-    sku: String,
-    category: String,
-    price: f64,
-    stock: i32,
-    min_stock: i32,
-    description: Option<String>,
+    sale_price: Option<f64>,
+    brand: Option<String>,
+    category: Option<String>,
+    presentation: Option<String>,
+    flavor: Option<String>,
+    weight: Option<String>,
+    image_path: Option<String>,
+    expiry_date: Option<String>,
+    lot_number: Option<String>,
+    min_stock: Option<i32>,
+    location: Option<String>,
+    status: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StockMovement {
+    id: Option<i32>,
+    product_id: i32,
+    movement_type: String, // "ingreso" or "egreso"
+    quantity: i32,
+    note: Option<String>,
+    created_by: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Purchase {
+    id: Option<i32>,
+    product_id: i32,
+    supplier: Option<String>,
+    purchase_price: Option<f64>,
+    purchase_date: Option<String>,
+    discount: Option<f64>,
+    expected_replenish_days: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Sale {
     id: Option<i32>,
-    date: String,
-    client: String,
-    total: f64,
-    status: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct InventoryMovement {
-    id: Option<i32>,
     product_id: i32,
-    movement_type: String, // "entrada" or "salida"
     quantity: i32,
-    date: String,
-    notes: Option<String>,
+    sale_price: f64,
+    discount: Option<f64>,
+    channel: Option<String>,
+    sale_date: String,
+    created_by: Option<i32>,
 }
 
 // Database state
@@ -47,17 +77,70 @@ struct AppState {
 fn init_database() -> Result<Connection> {
     let conn = Connection::open("vitasport.db")?;
 
+    // Create users table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL,
+            fullname TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
+
     // Create products table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sku TEXT UNIQUE,
             name TEXT NOT NULL,
-            sku TEXT UNIQUE NOT NULL,
-            category TEXT NOT NULL,
-            price REAL NOT NULL,
-            stock INTEGER NOT NULL DEFAULT 0,
-            min_stock INTEGER NOT NULL DEFAULT 5,
-            description TEXT
+            sale_price REAL,
+            brand TEXT,
+            category TEXT,
+            presentation TEXT,
+            flavor TEXT,
+            weight TEXT,
+            image_path TEXT,
+            expiry_date TEXT,
+            lot_number TEXT,
+            min_stock INTEGER,
+            location TEXT,
+            status TEXT
+        )",
+        [],
+    )?;
+
+    // Create stock_movements table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS stock_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            note TEXT,
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        )",
+        [],
+    )?;
+
+    // Create purchases table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            supplier TEXT,
+            purchase_price REAL,
+            purchase_date TEXT,
+            discount REAL,
+            expected_replenish_days INTEGER,
+            FOREIGN KEY (product_id) REFERENCES products(id)
         )",
         [],
     )?;
@@ -66,41 +149,18 @@ fn init_database() -> Result<Connection> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            client TEXT NOT NULL,
-            total REAL NOT NULL,
-            status TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    // Create inventory movements table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS inventory_movements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER NOT NULL,
-            movement_type TEXT NOT NULL,
             quantity INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            notes TEXT,
-            FOREIGN KEY (product_id) REFERENCES products(id)
+            sale_price REAL NOT NULL,
+            discount REAL,
+            channel TEXT,
+            sale_date TEXT NOT NULL,
+            created_by INTEGER,
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (created_by) REFERENCES users(id)
         )",
         [],
     )?;
-
-    // Insert sample data if empty
-    let count: i32 = conn.query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))?;
-    
-    if count == 0 {
-        conn.execute(
-            "INSERT INTO products (name, sku, category, price, stock, min_stock, description) VALUES 
-            ('Proteína Whey 2kg', 'PROT-001', 'Suplementos', 45000, 28, 10, 'Proteína de suero de leche premium'),
-            ('Creatina Monohidrato 500g', 'CREA-001', 'Suplementos', 32000, 15, 5, 'Creatina pura micronizada'),
-            ('BCAA 400g', 'BCAA-001', 'Aminoácidos', 28000, 42, 10, 'Aminoácidos ramificados 2:1:1'),
-            ('Pre-Workout 300g', 'PRE-001', 'Energéticos', 38000, 8, 5, 'Fórmula pre-entreno avanzada')",
-            [],
-        )?;
-    }
 
     Ok(conn)
 }
@@ -110,20 +170,27 @@ fn init_database() -> Result<Connection> {
 fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, name, sku, category, price, stock, min_stock, description FROM products")
+        .prepare("SELECT id, sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, location, status FROM products")
         .map_err(|e| e.to_string())?;
 
     let products = stmt
         .query_map([], |row| {
             Ok(Product {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                sku: row.get(2)?,
-                category: row.get(3)?,
-                price: row.get(4)?,
-                stock: row.get(5)?,
-                min_stock: row.get(6)?,
-                description: row.get(7)?,
+                sku: row.get(1)?,
+                name: row.get(2)?,
+                sale_price: row.get(3)?,
+                brand: row.get(4)?,
+                category: row.get(5)?,
+                presentation: row.get(6)?,
+                flavor: row.get(7)?,
+                weight: row.get(8)?,
+                image_path: row.get(9)?,
+                expiry_date: row.get(10)?,
+                lot_number: row.get(11)?,
+                min_stock: row.get(12)?,
+                location: row.get(13)?,
+                status: row.get(14)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -137,16 +204,23 @@ fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
 fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO products (name, sku, category, price, stock, min_stock, description) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        [
-            &product.name,
-            &product.sku,
-            &product.category,
-            &product.price.to_string(),
-            &product.stock.to_string(),
-            &product.min_stock.to_string(),
-            &product.description.unwrap_or_default(),
+        "INSERT INTO products (sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, location, status) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        rusqlite::params![
+            product.sku,
+            product.name,
+            product.sale_price,
+            product.brand,
+            product.category,
+            product.presentation,
+            product.flavor,
+            product.weight,
+            product.image_path,
+            product.expiry_date,
+            product.lot_number,
+            product.min_stock,
+            product.location,
+            product.status,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -158,17 +232,24 @@ fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> 
 fn update_product(state: State<AppState>, product: Product) -> Result<(), String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE products SET name=?1, sku=?2, category=?3, price=?4, stock=?5, min_stock=?6, description=?7 
-         WHERE id=?8",
-        [
-            &product.name,
-            &product.sku,
-            &product.category,
-            &product.price.to_string(),
-            &product.stock.to_string(),
-            &product.min_stock.to_string(),
-            &product.description.unwrap_or_default(),
-            &product.id.unwrap().to_string(),
+        "UPDATE products SET sku=?1, name=?2, sale_price=?3, brand=?4, category=?5, presentation=?6, flavor=?7, weight=?8, image_path=?9, expiry_date=?10, lot_number=?11, min_stock=?12, location=?13, status=?14 
+         WHERE id=?15",
+        rusqlite::params![
+            product.sku,
+            product.name,
+            product.sale_price,
+            product.brand,
+            product.category,
+            product.presentation,
+            product.flavor,
+            product.weight,
+            product.image_path,
+            product.expiry_date,
+            product.lot_number,
+            product.min_stock,
+            product.location,
+            product.status,
+            product.id,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -186,31 +267,95 @@ fn delete_product(state: State<AppState>, id: i32) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_low_stock_products(state: State<AppState>) -> Result<Vec<Product>, String> {
+fn get_stock_movements(state: State<AppState>) -> Result<Vec<StockMovement>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, name, sku, category, price, stock, min_stock, description 
-                  FROM products WHERE stock <= min_stock")
+        .prepare("SELECT id, product_id, type, quantity, note, created_by FROM stock_movements ORDER BY created_at DESC LIMIT 100")
         .map_err(|e| e.to_string())?;
 
-    let products = stmt
+    let movements = stmt
         .query_map([], |row| {
-            Ok(Product {
+            Ok(StockMovement {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                sku: row.get(2)?,
-                category: row.get(3)?,
-                price: row.get(4)?,
-                stock: row.get(5)?,
-                min_stock: row.get(6)?,
-                description: row.get(7)?,
+                product_id: row.get(1)?,
+                movement_type: row.get(2)?,
+                quantity: row.get(3)?,
+                note: row.get(4)?,
+                created_by: row.get(5)?,
             })
         })
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    Ok(products)
+    Ok(movements)
+}
+
+#[tauri::command]
+fn add_stock_movement(state: State<AppState>, movement: StockMovement) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO stock_movements (product_id, type, quantity, note, created_by) 
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![
+            movement.product_id,
+            movement.movement_type,
+            movement.quantity,
+            movement.note,
+            movement.created_by,
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn get_sales(state: State<AppState>) -> Result<Vec<Sale>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, product_id, quantity, sale_price, discount, channel, sale_date, created_by FROM sales ORDER BY sale_date DESC LIMIT 100")
+        .map_err(|e| e.to_string())?;
+
+    let sales = stmt
+        .query_map([], |row| {
+            Ok(Sale {
+                id: row.get(0)?,
+                product_id: row.get(1)?,
+                quantity: row.get(2)?,
+                sale_price: row.get(3)?,
+                discount: row.get(4)?,
+                channel: row.get(5)?,
+                sale_date: row.get(6)?,
+                created_by: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(sales)
+}
+
+#[tauri::command]
+fn add_sale(state: State<AppState>, sale: Sale) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO sales (product_id, quantity, sale_price, discount, channel, sale_date, created_by) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            sale.product_id,
+            sale.quantity,
+            sale.sale_price,
+            sale.discount,
+            sale.channel,
+            sale.sale_date,
+            sale.created_by,
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
 }
 
 fn main() {
@@ -226,7 +371,10 @@ fn main() {
             add_product,
             update_product,
             delete_product,
-            get_low_stock_products,
+            get_stock_movements,
+            add_stock_movement,
+            get_sales,
+            add_sale,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
