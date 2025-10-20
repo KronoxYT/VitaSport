@@ -1,12 +1,14 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Package, 
   ShoppingCart, 
   FileText,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useAuth } from '../contexts/AuthContext';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -22,19 +24,27 @@ const menuItems = [
  */
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { username, logout } = useAuth();
+  
   // Detectar modo oscuro del sistema automáticamente
   useDarkMode();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar con soporte para modo oscuro */}
-      <aside className="w-64 bg-gray-800 dark:bg-gray-950 shadow-lg">
+      <aside className="w-64 bg-gray-800 dark:bg-gray-950 shadow-lg flex flex-col relative">
         <div className="p-6 border-b border-gray-700 dark:border-gray-800">
           <h1 className="text-2xl font-bold text-white">VitaSport</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Sistema de Inventario</p>
         </div>
         
-        <nav className="p-4">
+        <nav className="p-4 flex-1 overflow-y-auto pb-32">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -55,6 +65,30 @@ export default function Layout() {
             );
           })}
         </nav>
+
+        {/* Usuario y logout al final del sidebar */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold text-white">
+                  {username?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{username}</p>
+                <p className="text-xs text-gray-400">Administrador</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg transition-colors"
+          >
+            <LogOut size={16} />
+            <span className="text-sm font-medium">Cerrar Sesión</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content con soporte para modo oscuro */}
