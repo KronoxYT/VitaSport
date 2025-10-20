@@ -53,17 +53,5 @@
       "csp": null
     }
   },
-  "plugins": {
-    "fs": {
-      "all": true,
-      "scope": ["$APPDATA/*", "$RESOURCE/*"]
-    },
-    "dialog": {
-      "all": true
-    },
-    "shell": {
-      "all": false,
-      "open": true
-    }
-  }
+  "plugins": {}
 }
