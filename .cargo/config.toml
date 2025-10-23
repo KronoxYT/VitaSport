@@ -1,0 +1,19 @@
+# Configuración de Cargo para optimizar compilaciones
+
+[build]
+# Compilación paralela (ajusta según tus cores de CPU)
+# Ejemplo: Si tienes 8 cores, usa 6-7 para dejar recursos al sistema
+jobs = 6
+
+# Usar linker más rápido (Windows)
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/INCREMENTAL"]
+
+# Características de compilación
+[profile.dev]
+# Split debuginfo reduce tiempo de linkado
+split-debuginfo = "unpacked"
+
+# Cache de compilación (opcional - requiere sccache instalado)
+# [build]
+# rustc-wrapper = "sccache"

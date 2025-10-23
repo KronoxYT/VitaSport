@@ -27,7 +27,8 @@ export default function Login() {
     // Simular pequeño delay para mejor UX
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const success = login(username, password);
+    // Login ahora es async
+    const success = await login(username, password);
     
     if (success) {
       navigate('/dashboard');

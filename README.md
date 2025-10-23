@@ -24,13 +24,31 @@
 
 ## 🚀 Características
 
-- ✅ Dashboard con estadísticas en tiempo real
-- ✅ Gestión completa de productos (CRUD)
+### 🔐 Autenticación y Seguridad
+- ✅ Sistema de login con credenciales por defecto (admin/admin)
+- ✅ Sesión persistente en localStorage
+- ✅ Rutas protegidas con redirección automática
+- ✅ Usuario visible en sidebar con opción de logout
+
+### 🎨 Interfaz y Experiencia
+- ✅ **Modo oscuro automático** - Detecta y se adapta al tema del sistema operativo
+- ✅ Interfaz moderna y responsive con TailwindCSS
+- ✅ Transiciones y animaciones suaves
+- ✅ Diseño consistente en todas las páginas
+
+### 📊 Gestión de Datos
+- ✅ Dashboard con estadísticas en tiempo real desde SQLite
+- ✅ Gestión completa de productos (CRUD) con formulario detallado
 - ✅ Control de inventario con alertas de stock bajo
-- ✅ Registro de ventas
-- ✅ Generación de reportes
-- ✅ Base de datos SQLite local
-- ✅ Interfaz moderna y responsive
+- ✅ Registro de ventas conectado a base de datos
+- ✅ Estados vacíos informativos cuando no hay datos
+- ✅ Base de datos SQLite local y persistente
+
+### 💻 Desarrollo
+- ✅ Detección automática de entorno (dev vs producción)
+- ✅ Hot reload ultra rápido en modo desarrollo
+- ✅ Mensajes informativos en consola con emojis
+- ✅ Documentación completa del código con JSDoc
 - ✅ Aplicación de escritorio multiplataforma
 
 ## 🛠️ Tecnologías
@@ -61,6 +79,43 @@ cd VitaSport
 ```bash
 npm install
 ```
+
+3. Iniciar en modo desarrollo (rápido, sin backend):
+```bash
+npm run dev
+```
+
+4. Abrir en el navegador: `http://localhost:5173`
+
+5. **Credenciales de acceso:**
+   - Usuario: `admin`
+   - Contraseña: `admin`
+
+---
+
+## 🔑 Primer Uso
+
+1. Al iniciar verás la **pantalla de login**
+2. Ingresa las credenciales por defecto: **admin/admin**
+3. Serás redirigido al **Dashboard**
+4. La sesión se mantiene automáticamente (localStorage)
+5. Para cerrar sesión, haz clic en el botón al final del sidebar
+
+**Nota:** En modo desarrollo (`npm run dev`), las páginas mostrarán interfaz vacía porque no hay backend. Para funcionalidad completa, usa `npm run tauri:dev`.
+
+---
+
+## 🌙 Modo Oscuro Automático
+
+La aplicación detecta **automáticamente** el tema de tu sistema operativo:
+
+- **Windows:** Settings > Personalization > Colors > "Choose your mode"
+- **macOS:** System Preferences > General > Appearance
+- **Linux:** Según tu entorno de escritorio
+
+El tema cambia **instantáneamente** sin recargar la aplicación.
+
+---
 
 ## Comandos Disponibles
 
@@ -152,34 +207,47 @@ VitaSport/
 └── package.json         # Dependencias de Node.js
 ```
 
-## 🎯 Características Principales
+## 🎯 Páginas y Funcionalidades
 
-### Dashboard
-- Visualización de métricas clave
-- Productos con stock bajo
-- Actividad reciente
-- Productos más vendidos
+### 🔐 Login
+- Pantalla de inicio de sesión moderna con gradientes
+- Credenciales por defecto: admin/admin
+- Validación de usuarios
+- Sesión persistente automática
+- Animaciones y feedback visual
 
-### Productos
+### 📊 Dashboard
+- Estadísticas en tiempo real desde SQLite
+- Total de productos, productos activos, stock bajo
+- Ventas totales y revenue
+- Gráficos placeholder (próximamente con datos reales)
+- Alertas inteligentes: stock bajo, productos sin stock
+- Modo oscuro completo
+
+### 📦 Inventario (Productos)
+- Formulario completo con todos los campos
+- Búsqueda en tiempo real por nombre o SKU
+- Filtros por categoría
+- Tabla responsive con todos los detalles
+- Estados de carga, vacío y error
 - Agregar, editar y eliminar productos
-- Búsqueda en tiempo real
-- Categorización
-- Control de precios y stock
 
-### Inventario
-- Registro de entradas y salidas
-- Historial de movimientos
-- Alertas automáticas de stock crítico
+### 💰 Ventas
+- Conectado a base de datos real
+- Estadísticas: Ventas hoy, mes, total transacciones
+- Historial completo de ventas
+- Estado vacío cuando no hay ventas
+- Filtrado por fecha y producto
 
-### Ventas
-- Registro de transacciones
-- Seguimiento de clientes
-- Estadísticas de ventas
-
-### Reportes
-- Reportes predefinidos
-- Generación de reportes personalizados
+### 📈 Reportes
+- Generación de reportes
 - Exportación de datos
+- Próximamente: gráficos avanzados
+
+### 👥 Usuarios
+- Gestión de usuarios del sistema
+- Roles y permisos
+- Próximamente: cambio de contraseñas
 
 ## 🔒 Base de Datos
 
@@ -194,18 +262,90 @@ La aplicación utiliza SQLite para almacenamiento local. La base de datos se cre
 
 **Nota:** La base de datos se crea vacía. Debes agregar tus propios productos y datos.
 
+## 📚 Documentación Adicional
+
+Este proyecto incluye documentación completa para desarrolladores:
+
+- **[COMPILE_TIPS.md](COMPILE_TIPS.md)** - ⚡ Optimizaciones de compilación
+  - Cómo reducir tiempos de compilación 40-50%
+  - Configuraciones de desarrollo optimizadas
+  - Flujos de trabajo eficientes
+  - Tips para compilaciones rápidas
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Arquitectura detallada del proyecto
+  - Estructura completa del código
+  - Diagramas de flujo de datos
+  - Esquemas de base de datos
+  - API de comandos Tauri
+  - Sistema de diseño y estilos
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Guía de contribución
+  - Inicio rápido para desarrolladores
+  - Estándares de código y buenas prácticas
+  - Cómo agregar nuevas funcionalidades (con ejemplos)
+  - Convenciones de commit
+  - Tips de debugging
+  - FAQ para desarrolladores
+
+Todos los archivos de código incluyen:
+- ✅ Comentarios JSDoc en funciones importantes
+- ✅ Explicaciones de modos de operación (dev vs producción)
+- ✅ Console logs informativos con emojis
+
 ## 🤝 Contribuir
 
-Las contribuciones son bienvenidas. Por favor, abre un issue o pull request.
+Las contribuciones son bienvenidas. Por favor:
+
+1. Lee [CONTRIBUTING.md](CONTRIBUTING.md) primero
+2. Abre un **issue** para discutir cambios grandes
+3. Haz **fork** del repositorio
+4. Crea una **rama** para tu feature
+5. Sigue los **estándares de código** del proyecto
+6. Envía un **pull request** con descripción clara
 
 ## 📄 Licencia
 
-Este proyecto es de código abierto.
+Este proyecto es de código abierto bajo licencia MIT.
 
 ## 👤 Autor
 
 **KronoxYT**
+- GitHub: [@KronoxYT](https://github.com/KronoxYT)
+
+## 🙏 Agradecimientos
+
+- [Tauri](https://tauri.app/) - Framework para aplicaciones de escritorio
+- [React](https://reactjs.org/) - Librería UI
+- [TailwindCSS](https://tailwindcss.com/) - Framework CSS
+- [Lucide](https://lucide.dev/) - Iconos modernos
 
 ---
 
-Hecho con ❤️ usando Tauri + React
+## 📝 Notas de Versión
+
+### v1.0.0 (Actual)
+- ✅ Sistema de autenticación con login
+- ✅ Modo oscuro automático
+- ✅ Dashboard con estadísticas reales
+- ✅ CRUD completo de productos
+- ✅ Gestión de ventas
+- ✅ Base de datos SQLite
+- ✅ Documentación completa
+
+### Próximamente
+- 🔜 Gráficos avanzados con datos reales
+- 🔜 Módulo de compras a proveedores
+- 🔜 Sistema de roles y permisos
+- 🔜 Exportación de reportes a PDF/Excel
+- 🔜 Notificaciones push
+- 🔜 Backup automático de base de datos
+
+---
+
+<div align="center">
+
+**Hecho con ❤️ usando Tauri + React + TypeScript**
+
+⭐ Si te gusta este proyecto, dale una estrella en GitHub!
+
+</div>

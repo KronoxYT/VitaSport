@@ -18,7 +18,19 @@ tauri-plugin-shell = "2.3.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
+bcrypt = "0.15"
 
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Perfil de desarrollo optimizado para velocidad de compilación
+[profile.dev]
+opt-level = 1  # Optimización mínima para compilar más rápido
+incremental = true  # Compilación incremental
+codegen-units = 256  # Más unidades = compilación más paralela
+
+# Optimizar dependencias en modo dev (no tu código)
+[profile.dev.package."*"]
+opt-level = 2  # Las dependencias se optimizan más
+debug = false  # Sin símbolos de debug en dependencias

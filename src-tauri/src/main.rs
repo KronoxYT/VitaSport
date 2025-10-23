@@ -5,6 +5,7 @@ use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
+use bcrypt::{hash, verify, DEFAULT_COST};
 
 // Database models
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,6 +162,24 @@ fn init_database() -> Result<Connection> {
         )",
         [],
     )?;
+
+    // Insertar usuario admin por defecto si no existe
+    let user_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM users",
+        [],
+        |row| row.get(0)
+    ).unwrap_or(0);
+    
+    if user_count == 0 {
+        // Hash seguro de la contraseña "admin" con bcrypt
+        let admin_password_hash = hash("admin", DEFAULT_COST).expect("Failed to hash password");
+        
+        conn.execute(
+            "INSERT INTO users (username, password_hash, role, fullname) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params!["admin", admin_password_hash, "Administrador", "Administrador del Sistema"],
+        )?;
+        println!("✅ Usuario admin por defecto creado con contraseña encriptada");
+    }
 
     Ok(conn)
 }
@@ -358,6 +377,132 @@ fn add_sale(state: State<AppState>, sale: Sale) -> Result<i64, String> {
     Ok(conn.last_insert_rowid())
 }
 
+// ============================================
+// USER COMMANDS
+// ============================================
+
+#[tauri::command]
+fn get_users(state: State<AppState>) -> Result<Vec<User>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, username, role, fullname FROM users")
+        .map_err(|e| e.to_string())?;
+
+    let users = stmt
+        .query_map([], |row| {
+            Ok(User {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                password_hash: String::new(), // No exponer contraseñas
+                role: row.get(2)?,
+                fullname: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(users)
+}
+
+#[tauri::command]
+fn add_user(state: State<AppState>, username: String, fullname: String, password: String, role: String) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    
+    // Hash seguro de la contraseña con bcrypt
+    let password_hash = hash(&password, DEFAULT_COST).map_err(|e| e.to_string())?;
+    
+    conn.execute(
+        "INSERT INTO users (username, fullname, password_hash, role) 
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![
+            username,
+            fullname,
+            password_hash,
+            role,
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn update_user(state: State<AppState>, id: i32, username: String, fullname: String, role: String, password: Option<String>) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    
+    if let Some(pwd) = password {
+        // Si se proporciona contraseña, hashearla y actualizarla
+        let password_hash = hash(&pwd, DEFAULT_COST).map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE users SET username = ?1, fullname = ?2, role = ?3, password_hash = ?4, updated_at = CURRENT_TIMESTAMP WHERE id = ?5",
+            rusqlite::params![username, fullname, role, password_hash, id],
+        )
+        .map_err(|e| e.to_string())?;
+    } else {
+        // Solo actualizar username, fullname y role (mantener contraseña actual)
+        conn.execute(
+            "UPDATE users SET username = ?1, fullname = ?2, role = ?3, updated_at = CURRENT_TIMESTAMP WHERE id = ?4",
+            rusqlite::params![username, fullname, role, id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_user(state: State<AppState>, id: i32) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM users WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Verifica las credenciales de login contra la base de datos
+/// Retorna el usuario si las credenciales son correctas, error si no
+#[tauri::command]
+fn verify_login(state: State<AppState>, username: String, password: String) -> Result<User, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    
+    // Buscar usuario por username
+    let result = conn.query_row(
+        "SELECT id, username, password_hash, role, fullname FROM users WHERE username = ?1",
+        rusqlite::params![username],
+        |row| {
+            Ok(User {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                password_hash: row.get(2)?,
+                role: row.get(3)?,
+                fullname: row.get(4)?,
+            })
+        },
+    );
+    
+    match result {
+        Ok(user) => {
+            // Verificar contraseña con bcrypt
+            let is_valid = verify(&password, &user.password_hash)
+                .map_err(|e| format!("Error verificando contraseña: {}", e))?;
+            
+            if is_valid {
+                // No enviar el hash de contraseña al frontend
+                Ok(User {
+                    id: user.id,
+                    username: user.username,
+                    password_hash: String::new(), // Vacío por seguridad
+                    role: user.role,
+                    fullname: user.fullname,
+                })
+            } else {
+                Err("Contraseña incorrecta".to_string())
+            }
+        }
+        Err(_) => Err("Usuario no encontrado".to_string()),
+    }
+}
+
 fn main() {
     let db = init_database().expect("Failed to initialize database");
 
@@ -375,6 +520,11 @@ fn main() {
             add_stock_movement,
             get_sales,
             add_sale,
+            get_users,
+            add_user,
+            update_user,
+            delete_user,
+            verify_login,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
