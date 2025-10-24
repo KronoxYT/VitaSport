@@ -2,11 +2,32 @@ import { FileText, Download, Calendar } from 'lucide-react';
 import Button from '../components/Button';
 
 export default function Reports() {
+  /**
+   * Maneja la exportación de todos los reportes
+   */
+  const handleExportAll = () => {
+    alert('Exportando todos los reportes...\n\nFormato: PDF\nDestino: Carpeta de Descargas\n\n(Funcionalidad en desarrollo)');
+  };
+
+  /**
+   * Maneja la descarga de un reporte específico
+   */
+  const handleDownloadReport = (reportTitle: string) => {
+    alert(`Descargando: ${reportTitle}\n\nFormato: PDF\nGenerando reporte...\n\n(Funcionalidad en desarrollo)`);
+  };
+
+  /**
+   * Maneja la generación de reporte personalizado
+   */
+  const handleGenerateReport = () => {
+    alert('Generando reporte personalizado...\n\nRevisando fechas seleccionadas\nConsultando base de datos\nGenerando PDF\n\n(Funcionalidad en desarrollo)');
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Reportes</h1>
-        <Button icon={Download}>Exportar Reportes</Button>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Reportes</h1>
+        <Button icon={Download} onClick={handleExportAll}>Exportar Reportes</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -18,54 +39,59 @@ export default function Reports() {
           { title: 'Movimientos de Stock', description: 'Historial de entradas y salidas', icon: FileText },
           { title: 'Reporte Financiero', description: 'Resumen financiero mensual', icon: FileText },
         ].map((report, idx) => (
-          <div key={idx} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer">
+          <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-100 dark:border-gray-700">
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-primary-100 rounded-lg">
-                <report.icon className="text-primary-600" size={24} />
+              <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                <report.icon className="text-primary-600 dark:text-primary-400" size={24} />
               </div>
-              <Button variant="secondary" icon={Download} className="!p-2">
+              <Button 
+                variant="secondary" 
+                icon={Download} 
+                className="!p-2"
+                onClick={() => handleDownloadReport(report.title)}
+              >
                 <span className="sr-only">Descargar</span>
               </Button>
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">{report.title}</h3>
-            <p className="text-sm text-gray-500">{report.description}</p>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{report.title}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{report.description}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Generar Reporte Personalizado</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Generar Reporte Personalizado</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Reporte</label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Reporte</label>
+            <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               <option>Ventas</option>
               <option>Inventario</option>
               <option>Financiero</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Inicio</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Inicio</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
               <input
                 type="date"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Fin</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Fin</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
               <input
                 type="date"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
         </div>
-        <Button icon={FileText}>Generar Reporte</Button>
+        <Button icon={FileText} onClick={handleGenerateReport}>Generar Reporte</Button>
       </div>
     </div>
   );

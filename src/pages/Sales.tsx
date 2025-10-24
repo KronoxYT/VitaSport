@@ -32,6 +32,14 @@ export default function Sales() {
   }, []);
 
   /**
+   * Maneja el clic en "Nueva Venta"
+   * TODO: Implementar modal de nueva venta
+   */
+  const handleNewSale = () => {
+    alert('Funcionalidad "Nueva Venta" en desarrollo.\n\nPróximamente podrás:\n- Seleccionar productos\n- Ingresar cantidad\n- Aplicar descuentos\n- Registrar venta');
+  };
+
+  /**
    * Carga las ventas desde la base de datos
    * 
    * MODOS DE OPERACIÓN:
@@ -89,7 +97,7 @@ export default function Sales() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Ventas</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">Registro de transacciones</p>
         </div>
-        <Button icon={Plus}>Nueva Venta</Button>
+        <Button icon={Plus} onClick={handleNewSale}>Nueva Venta</Button>
       </div>
 
       {/* Estadísticas con datos reales y modo oscuro */}
