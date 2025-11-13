@@ -3,7 +3,7 @@ import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import ProductForm from '../components/ProductForm';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api';
 
 interface Product {
   id?: number;
@@ -22,6 +22,12 @@ interface Product {
   location?: string;
   status?: string;
 }
+
+const isTauriEnvironment = () => {
+  if (typeof window === 'undefined') return false;
+  const win = window as unknown as { __TAURI__?: unknown; __TAURI_IPC__?: unknown };
+  return Boolean(win.__TAURI__ || win.__TAURI_IPC__);
+};
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +51,7 @@ export default function Products() {
       setLoading(true);
       
       // Verificar si estamos en modo Tauri (con backend)
-      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+      if (isTauriEnvironment()) {
         // MODO TAURI: Invocar comando de Rust para obtener productos
         const result = await invoke<Product[]>('get_products');
         setProducts(result);
@@ -106,17 +112,17 @@ export default function Products() {
     if (window.confirm('¿Estás seguro de eliminar este producto?')) {
       try {
         // Solo intentar eliminar si Tauri está disponible
-        if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        if (isTauriEnvironment()) {
           await invoke('delete_product', { id });
           await loadProducts();
           console.info(`✅ Producto #${id} eliminado correctamente`);
         } else {
           console.warn('⚠️ Modo desarrollo: No se puede eliminar sin backend');
-          alert('Función no disponible en modo desarrollo');
+          window.alert('Función no disponible en modo desarrollo');
         }
       } catch (error) {
         console.error('❌ Error eliminando producto:', error);
-        alert('Error al eliminar el producto. Verifica la consola para más detalles.');
+        window.alert('Error al eliminar el producto. Verifica la consola para más detalles.');
       }
     }
   };
@@ -129,15 +135,21 @@ export default function Products() {
    * @returns {Promise<void>}
    */
   const handleSubmitProduct = async (data: Product) => {
+    console.log('🎯 handleSubmitProduct llamado con:', data);
+    
     try {
       // Solo intentar guardar si Tauri está disponible
-      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+      if (isTauriEnvironment()) {
+        console.log('✅ Tauri detectado, guardando producto...');
+        
         if (editingProduct?.id) {
           // ACTUALIZAR producto existente
+          console.log(`🔄 Actualizando producto #${editingProduct.id}`);
           await invoke('update_product', { product: { ...data, id: editingProduct.id } });
           console.info(`✅ Producto #${editingProduct.id} actualizado`);
         } else {
           // CREAR nuevo producto
+          console.log('➕ Creando nuevo producto');
           await invoke('add_product', { product: data });
           console.info('✅ Nuevo producto agregado');
         }
@@ -147,11 +159,12 @@ export default function Products() {
         setIsModalOpen(false);
       } else {
         console.warn('⚠️ Modo desarrollo: No se puede guardar sin backend');
-        alert('Función no disponible en modo desarrollo. Ejecuta: npm run tauri:dev');
+        console.warn('🔧 Ejecuta: npm run tauri:dev para funcionalidad completa');
+        window.alert('⚠️ Función no disponible en modo desarrollo.\n\nPara guardar productos, ejecuta:\nnpm run tauri:dev');
       }
     } catch (error) {
       console.error('❌ Error guardando producto:', error);
-      alert('Error al guardar el producto. Verifica la consola para más detalles.');
+      alert(`❌ Error al guardar el producto:\n\n${error}\n\nVerifica la consola para más detalles.`);
     }
   };
 

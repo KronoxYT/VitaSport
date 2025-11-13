@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Package, TrendingUp, AlertTriangle, DollarSign, ShoppingCart } from 'lucide-react';
 import StatCard from '../components/StatCard';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api';
 
 interface Product {
   id?: number;

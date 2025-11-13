@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api';
 import { Plus, Edit, Trash2, Users as UsersIcon } from 'lucide-react';
 import Button from '../components/Button';
 import Modal from '../components/Modal';

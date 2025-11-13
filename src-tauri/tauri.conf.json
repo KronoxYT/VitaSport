@@ -1,43 +1,43 @@
 {
-  "productName": "VitaSport",
-  "version": "1.0.0",
-  "identifier": "com.vitasport.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:5173",
-    "frontendDist": "../dist"
+    "devPath": "http://localhost:5173",
+    "distDir": "../dist"
   },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": ""
-    },
-    "longDescription": "",
-    "macOS": {
-      "entitlements": null,
-      "exceptionDomain": "",
-      "frameworks": [],
-      "providerShortName": null,
-      "signingIdentity": null
-    },
-    "linux": {
-      "deb": {
-        "depends": []
+  "package": {
+    "productName": "VitaSport",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": {
+        "all": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["**"]
+      },
+      "shell": {
+        "all": true
       }
-    }
-  },
-  "app": {
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.vitasport.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
+    },
+    "security": {
+      "csp": null
+    },
     "windows": [
       {
         "title": "VitaSport - Sistema de Inventario",
@@ -48,10 +48,6 @@
         "minWidth": 800,
         "minHeight": 600
       }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "plugins": {}
+    ]
+  }
 }

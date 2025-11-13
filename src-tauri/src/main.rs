@@ -507,9 +507,6 @@ fn main() {
     let db = init_database().expect("Failed to initialize database");
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
         .manage(AppState { db: Mutex::new(db) })
         .invoke_handler(tauri::generate_handler![
             get_products,

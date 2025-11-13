@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api';
 import { Plus, DollarSign, ShoppingBag, TrendingUp, Package } from 'lucide-react';
 import Button from '../components/Button';
 
