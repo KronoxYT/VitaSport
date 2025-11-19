@@ -19,6 +19,7 @@ interface Product {
   expiry_date?: string;
   lot_number?: string;
   min_stock?: number;
+  max_stock?: number;
   location?: string;
   status?: string;
 }

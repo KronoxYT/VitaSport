@@ -32,6 +32,7 @@ struct Product {
     expiry_date: Option<String>,
     lot_number: Option<String>,
     min_stock: Option<i32>,
+    max_stock: Option<i32>,
     location: Option<String>,
     status: Option<String>,
 }
@@ -108,11 +109,14 @@ fn init_database() -> Result<Connection> {
             expiry_date TEXT,
             lot_number TEXT,
             min_stock INTEGER,
+            max_stock INTEGER,
             location TEXT,
             status TEXT
         )",
         [],
     )?;
+
+    let _ = conn.execute("ALTER TABLE products ADD COLUMN max_stock INTEGER", []);
 
     // Create stock_movements table
     conn.execute(
@@ -189,7 +193,7 @@ fn init_database() -> Result<Connection> {
 fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, location, status FROM products")
+        .prepare("SELECT id, sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, max_stock, location, status FROM products")
         .map_err(|e| e.to_string())?;
 
     let products = stmt
@@ -208,8 +212,9 @@ fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
                 expiry_date: row.get(10)?,
                 lot_number: row.get(11)?,
                 min_stock: row.get(12)?,
-                location: row.get(13)?,
-                status: row.get(14)?,
+                max_stock: row.get(13)?,
+                location: row.get(14)?,
+                status: row.get(15)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -223,8 +228,8 @@ fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
 fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "INSERT INTO products (sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, location, status) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        "INSERT INTO products (sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, max_stock, location, status) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
         rusqlite::params![
             product.sku,
             product.name,
@@ -238,6 +243,7 @@ fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> 
             product.expiry_date,
             product.lot_number,
             product.min_stock,
+            product.max_stock,
             product.location,
             product.status,
         ],
@@ -251,8 +257,8 @@ fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> 
 fn update_product(state: State<AppState>, product: Product) -> Result<(), String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE products SET sku=?1, name=?2, sale_price=?3, brand=?4, category=?5, presentation=?6, flavor=?7, weight=?8, image_path=?9, expiry_date=?10, lot_number=?11, min_stock=?12, location=?13, status=?14 
-         WHERE id=?15",
+        "UPDATE products SET sku=?1, name=?2, sale_price=?3, brand=?4, category=?5, presentation=?6, flavor=?7, weight=?8, image_path=?9, expiry_date=?10, lot_number=?11, min_stock=?12, max_stock=?13, location=?14, status=?15 
+         WHERE id=?16",
         rusqlite::params![
             product.sku,
             product.name,
@@ -266,6 +272,7 @@ fn update_product(state: State<AppState>, product: Product) -> Result<(), String
             product.expiry_date,
             product.lot_number,
             product.min_stock,
+            product.max_stock,
             product.location,
             product.status,
             product.id,
@@ -373,6 +380,17 @@ fn add_sale(state: State<AppState>, sale: Sale) -> Result<i64, String> {
         ],
     )
     .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO stock_movements (product_id, type, quantity, note, created_by)
+         VALUES (?1, 'egreso', ?2, ?3, ?4)",
+        rusqlite::params![
+            sale.product_id,
+            sale.quantity,
+            Option::<String>::None,
+            sale.created_by,
+        ],
+    ).map_err(|e| e.to_string())?;
 
     Ok(conn.last_insert_rowid())
 }

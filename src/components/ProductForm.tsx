@@ -13,6 +13,7 @@ interface ProductFormData {
   expiry_date?: string;
   lot_number?: string;
   min_stock?: number;
+  max_stock?: number;
   location?: string;
   status?: string;
 }
@@ -36,6 +37,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
     expiry_date: '',
     lot_number: '',
     min_stock: 5,
+    max_stock: 0,
     location: '',
     status: 'Activo',
   });
@@ -57,7 +59,7 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'sale_price' || name === 'min_stock' ? Number(value) : value
+      [name]: name === 'sale_price' || name === 'min_stock' || name === 'max_stock' ? Number(value) : value
     }));
   };
 
@@ -234,6 +236,21 @@ export default function ProductForm({ initialData, onSubmit, onCancel }: Product
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             placeholder="5"
+          />
+        </div>
+
+        {/* Stock Máximo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Stock Máximo
+          </label>
+          <input
+            type="number"
+            name="max_stock"
+            value={formData.max_stock}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            placeholder="0"
           />
         </div>
 
