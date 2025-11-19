@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api';
 import { Plus, DollarSign, ShoppingBag, TrendingUp, Package } from 'lucide-react';
 import Button from '../components/Button';
+import Modal from '../components/Modal';
 
 interface Sale {
   id?: number;
@@ -12,6 +13,12 @@ interface Sale {
   channel?: string;
   sale_date?: string;
   created_by?: number;
+}
+
+interface Product {
+  id?: number;
+  name: string;
+  sale_price?: number;
 }
 
 /**
@@ -26,17 +33,68 @@ export default function Sales() {
     month: 0,
     total: 0,
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [form, setForm] = useState<{ product_id: number; quantity: number; sale_price: number; discount?: number; channel?: string }>(
+    { product_id: 0, quantity: 1, sale_price: 0, discount: 0, channel: 'Tienda' }
+  );
 
   useEffect(() => {
     loadSales();
   }, []);
 
-  /**
-   * Maneja el clic en "Nueva Venta"
-   * TODO: Implementar modal de nueva venta
-   */
-  const handleNewSale = () => {
-    alert('Funcionalidad "Nueva Venta" en desarrollo.\n\nPróximamente podrás:\n- Seleccionar productos\n- Ingresar cantidad\n- Aplicar descuentos\n- Registrar venta');
+  const handleNewSale = async () => {
+    setIsModalOpen(true);
+    try {
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const result = await invoke<Product[]>('get_products');
+        setProducts(result);
+        const first = result[0];
+        setForm(prev => ({ ...prev, product_id: first?.id || 0, sale_price: first?.sale_price || 0 }));
+      } else {
+        setProducts([]);
+      }
+    } catch (e) {
+      setProducts([]);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === 'product_id') {
+      const pid = Number(value);
+      const p = products.find(pr => pr.id === pid);
+      setForm(prev => ({ ...prev, product_id: pid, sale_price: p?.sale_price || 0 }));
+    } else if (name === 'quantity' || name === 'sale_price' || name === 'discount') {
+      setForm(prev => ({ ...prev, [name]: Number(value) } as any));
+    } else {
+      setForm(prev => ({ ...prev, [name]: value } as any));
+    }
+  };
+
+  const handleSubmitSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const payload = {
+          product_id: form.product_id,
+          quantity: form.quantity,
+          sale_price: form.sale_price,
+          discount: form.discount,
+          channel: form.channel,
+          sale_date: new Date().toISOString(),
+          created_by: null,
+        };
+        await invoke('add_sale', { sale: payload });
+        setIsModalOpen(false);
+        await loadSales();
+        alert('Venta registrada');
+      } else {
+        alert('Ejecuta la app con backend para registrar ventas');
+      }
+    } catch (error) {
+      alert('Error registrando venta');
+    }
   };
 
   /**
@@ -91,6 +149,49 @@ export default function Sales() {
 
   return (
     <div className="space-y-6">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Nueva Venta"
+        size="md"
+      >
+        <form onSubmit={handleSubmitSale} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Producto</label>
+            <select name="product_id" value={form.product_id} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg">
+              {products.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+              <input type="number" name="quantity" value={form.quantity} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio</label>
+              <input type="number" step="0.01" name="sale_price" value={form.sale_price} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento</label>
+              <input type="number" step="0.01" name="discount" value={form.discount} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Canal</label>
+            <select name="channel" value={form.channel} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg">
+              <option value="Tienda">Tienda</option>
+              <option value="Online">Online</option>
+              <option value="Redes">Redes</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button type="submit">Registrar Venta</Button>
+          </div>
+        </form>
+      </Modal>
       {/* Header con modo oscuro */}
       <div className="flex justify-between items-center">
         <div>

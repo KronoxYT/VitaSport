@@ -1,26 +1,75 @@
+import { useState } from 'react';
 import { FileText, Download, Calendar } from 'lucide-react';
 import Button from '../components/Button';
+import { invoke } from '@tauri-apps/api';
 
 export default function Reports() {
+  const [reportType, setReportType] = useState<'Ventas' | 'Inventario' | 'Financiero'>('Ventas');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   /**
    * Maneja la exportación de todos los reportes
    */
-  const handleExportAll = () => {
-    alert('Exportando todos los reportes...\n\nFormato: PDF\nDestino: Carpeta de Descargas\n\n(Funcionalidad en desarrollo)');
+  const handleExportAll = async () => {
+    try {
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const paths = await invoke<string[]>('export_all_reports');
+        alert(`✅ Reportes exportados en CSV:\n\n${paths.join('\n')}`);
+      } else {
+        alert('⚠️ Ejecuta en modo Tauri para exportar reportes (npm run tauri:dev)');
+      }
+    } catch (e) {
+      alert('❌ Error exportando reportes');
+    }
   };
 
   /**
    * Maneja la descarga de un reporte específico
    */
-  const handleDownloadReport = (reportTitle: string) => {
-    alert(`Descargando: ${reportTitle}\n\nFormato: PDF\nGenerando reporte...\n\n(Funcionalidad en desarrollo)`);
+  const handleDownloadReport = async (reportTitle: string) => {
+    try {
+      if (!(typeof window !== 'undefined' && '__TAURI__' in window)) {
+        alert('⚠️ Ejecuta en modo Tauri para exportar reportes (npm run tauri:dev)');
+        return;
+      }
+      if (reportTitle === 'Reporte de Ventas') {
+        const p = await invoke<string>('export_sales_report', { start_date: null, end_date: null });
+        alert(`✅ Reporte de Ventas exportado:\n${p}`);
+      } else if (reportTitle === 'Reporte de Inventario') {
+        const p = await invoke<string>('export_inventory_report');
+        alert(`✅ Reporte de Inventario exportado:\n${p}`);
+      } else {
+        alert('🛠️ Ese reporte está en desarrollo');
+      }
+    } catch (e) {
+      alert('❌ Error exportando el reporte');
+    }
   };
 
   /**
    * Maneja la generación de reporte personalizado
    */
-  const handleGenerateReport = () => {
-    alert('Generando reporte personalizado...\n\nRevisando fechas seleccionadas\nConsultando base de datos\nGenerando PDF\n\n(Funcionalidad en desarrollo)');
+  const handleGenerateReport = async () => {
+    try {
+      if (!(typeof window !== 'undefined' && '__TAURI__' in window)) {
+        alert('⚠️ Ejecuta en modo Tauri para exportar reportes (npm run tauri:dev)');
+        return;
+      }
+      if (reportType === 'Ventas') {
+        const p = await invoke<string>('export_sales_report', {
+          start_date: startDate || null,
+          end_date: endDate || null,
+        });
+        alert(`✅ Reporte de Ventas exportado:\n${p}`);
+      } else if (reportType === 'Inventario') {
+        const p = await invoke<string>('export_inventory_report');
+        alert(`✅ Reporte de Inventario exportado:\n${p}`);
+      } else {
+        alert('🛠️ Reporte financiero en desarrollo');
+      }
+    } catch (e) {
+      alert('❌ Error generando el reporte');
+    }
   };
 
   return (
@@ -64,10 +113,10 @@ export default function Reports() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Reporte</label>
-            <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-              <option>Ventas</option>
-              <option>Inventario</option>
-              <option>Financiero</option>
+            <select value={reportType} onChange={(e) => setReportType(e.target.value as any)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <option value="Ventas">Ventas</option>
+              <option value="Inventario">Inventario</option>
+              <option value="Financiero">Financiero</option>
             </select>
           </div>
           <div>
@@ -76,6 +125,8 @@ export default function Reports() {
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
               <input
                 type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
@@ -86,6 +137,8 @@ export default function Reports() {
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
               <input
                 type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>

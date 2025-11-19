@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
 use bcrypt::{hash, verify, DEFAULT_COST};
+use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::api::path::download_dir;
 
 // Database models
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,6 +19,145 @@ struct User {
     password_hash: String,
     role: String,
     fullname: Option<String>,
+}
+
+#[tauri::command]
+fn export_sales_report(state: State<AppState>, start_date: Option<String>, end_date: Option<String>) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let mut rows: Vec<(i32, i32, i32, f64, Option<f64>, Option<String>, String, Option<i32>)> = Vec::new();
+    if start_date.is_some() && end_date.is_some() {
+        let mut stmt = conn
+            .prepare("SELECT id, product_id, quantity, sale_price, discount, channel, sale_date, created_by FROM sales WHERE substr(sale_date,1,10) BETWEEN ?1 AND ?2 ORDER BY sale_date DESC")
+            .map_err(|e| e.to_string())?;
+        let iter = stmt
+            .query_map(rusqlite::params![start_date.as_ref().unwrap(), end_date.as_ref().unwrap()], |row| {
+                Ok((
+                    row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in iter { rows.push(r.map_err(|e| e.to_string())?); }
+    } else {
+        let mut stmt = conn
+            .prepare("SELECT id, product_id, quantity, sale_price, discount, channel, sale_date, created_by FROM sales ORDER BY sale_date DESC")
+            .map_err(|e| e.to_string())?;
+        let iter = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in iter { rows.push(r.map_err(|e| e.to_string())?); }
+    }
+
+    let mut csv = String::from("id,product_id,quantity,sale_price,discount,channel,sale_date,created_by\n");
+    for (id, pid, qty, price, disc, channel, date, created_by) in rows {
+        csv.push_str(&format!(
+            "{},{},{},{:.2},{},{},{},{}\n",
+            id,
+            pid,
+            qty,
+            price,
+            disc.map(|d| d.to_string()).unwrap_or_default(),
+            channel.unwrap_or_default(),
+            date,
+            created_by.map(|c| c.to_string()).unwrap_or_default()
+        ));
+    }
+
+    let base: PathBuf = download_dir().ok_or("No se pudo obtener carpeta Descargas")?;
+    let out_dir = base.join("VitaSport");
+    fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_secs();
+    let path = out_dir.join(format!("sales_report_{}.csv", ts));
+    fs::write(&path, csv).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn export_inventory_report(state: State<AppState>) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, sku, name, sale_price, brand, category, presentation, flavor, weight, expiry_date, lot_number, min_stock, max_stock, location, status FROM products")
+        .map_err(|e| e.to_string())?;
+
+    let mut csv = String::from("id,sku,name,sale_price,brand,category,presentation,flavor,weight,expiry_date,lot_number,min_stock,max_stock,location,status,current_stock\n");
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, i32>(0)?,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, Option<f64>>(3)?,
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(5)?,
+            row.get::<_, Option<String>>(6)?,
+            row.get::<_, Option<String>>(7)?,
+            row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
+            row.get::<_, Option<String>>(10)?,
+            row.get::<_, Option<i32>>(11)?,
+            row.get::<_, Option<i32>>(12)?,
+            row.get::<_, Option<String>>(13)?,
+            row.get::<_, Option<String>>(14)?,
+        ))
+    }).map_err(|e| e.to_string())?;
+
+    for r in rows {
+        let (id, sku, name, sale_price, brand, category, presentation, flavor, weight, expiry_date, lot_number, min_stock, max_stock, location, status) = r.map_err(|e| e.to_string())?;
+
+        let ingreso: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity),0) FROM stock_movements WHERE product_id=?1 AND type='ingreso'",
+            rusqlite::params![id],
+            |row| row.get(0),
+        ).unwrap_or(0);
+        let egreso: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity),0) FROM stock_movements WHERE product_id=?1 AND type='egreso'",
+            rusqlite::params![id],
+            |row| row.get(0),
+        ).unwrap_or(0);
+        let current_stock = ingreso - egreso;
+
+        csv.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            id,
+            sku.unwrap_or_default(),
+            name,
+            sale_price.map(|v| format!("{:.2}", v)).unwrap_or_default(),
+            brand.unwrap_or_default(),
+            category.unwrap_or_default(),
+            presentation.unwrap_or_default(),
+            flavor.unwrap_or_default(),
+            weight.unwrap_or_default(),
+            expiry_date.unwrap_or_default(),
+            lot_number.unwrap_or_default(),
+            min_stock.map(|v| v.to_string()).unwrap_or_default(),
+            max_stock.map(|v| v.to_string()).unwrap_or_default(),
+            location.unwrap_or_default(),
+            status.unwrap_or_default(),
+            current_stock,
+        ));
+    }
+
+    let base: PathBuf = download_dir().ok_or("No se pudo obtener carpeta Descargas")?;
+    let out_dir = base.join("VitaSport");
+    fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_secs();
+    let path = out_dir.join(format!("inventory_report_{}.csv", ts));
+    fs::write(&path, csv).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn export_all_reports(state: State<AppState>) -> Result<Vec<String>, String> {
+    let mut paths = Vec::new();
+    let inv = export_inventory_report(state.clone())?;
+    paths.push(inv);
+    let sales = export_sales_report(state, None, None)?;
+    paths.push(sales);
+    Ok(paths)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -535,6 +678,9 @@ fn main() {
             add_stock_movement,
             get_sales,
             add_sale,
+            export_inventory_report,
+            export_sales_report,
+            export_all_reports,
             get_users,
             add_user,
             update_user,
