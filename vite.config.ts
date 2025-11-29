@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 const host = process.env.TAURI_DEV_HOST;
+const isTauri = !!process.env.TAURI_PLATFORM;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,7 +14,7 @@ export default defineConfig({
   
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: isTauri ? true : false,
     host: host || false,
     hmr: host
       ? {
