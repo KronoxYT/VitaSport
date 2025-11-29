@@ -22,6 +22,12 @@ interface Product {
   max_stock?: number;
   location?: string;
   status?: string;
+  current_stock?: number;
+}
+
+interface StockBalance {
+  product_id: number;
+  current_stock: number;
 }
 
 const isTauriEnvironment = () => {
@@ -37,6 +43,10 @@ export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [targetProduct, setTargetProduct] = useState<Product | null>(null);
+  const [stockQty, setStockQty] = useState<number>(0);
+  const [stockNote, setStockNote] = useState<string>('');
 
   /**
    * Carga la lista de productos desde la base de datos SQLite
@@ -53,10 +63,20 @@ export default function Products() {
       
       // Verificar si estamos en modo Tauri (con backend)
       if (isTauriEnvironment()) {
-        // MODO TAURI: Invocar comando de Rust para obtener productos
-        const result = await invoke<Product[]>('get_products');
-        setProducts(result);
-        console.info(`✅ ${result.length} productos cargados desde SQLite`);
+        // MODO TAURI: Invocar comandos de Rust para obtener productos y saldos de stock
+        const [prods, balances] = await Promise.all([
+          invoke<Product[]>('get_products'),
+          invoke<StockBalance[]>('get_stock_balances'),
+        ]);
+        const balanceMap = new Map<number, number>(
+          balances.map((b) => [b.product_id, Number(b.current_stock)])
+        );
+        const merged = prods.map((p) => ({
+          ...p,
+          current_stock: balanceMap.get(p.id as number) ?? 0,
+        }));
+        setProducts(merged);
+        console.info(`✅ ${merged.length} productos cargados con stock actual`);
       } else {
         // MODO DESARROLLO: Sin backend, mostrar interfaz vacía
         console.info('🚀 Modo desarrollo: Interfaz lista para agregar productos');
@@ -69,6 +89,55 @@ export default function Products() {
       setProducts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openStockModal = (product: Product) => {
+    setTargetProduct(product);
+    setStockQty(0);
+    setStockNote('');
+    setIsStockModalOpen(true);
+  };
+
+  const restockToMax = async () => {
+    if (!targetProduct) return;
+    const current = targetProduct.current_stock ?? 0;
+    const max = targetProduct.max_stock ?? 0;
+    const delta = max - current;
+    if (delta <= 0) {
+      alert('El stock ya está en el máximo');
+      return;
+    }
+    if (!isTauriEnvironment()) {
+      alert('Disponible solo con backend Tauri');
+      return;
+    }
+    try {
+      await invoke('add_stock_movement', { movement: { product_id: targetProduct.id, movement_type: 'ingreso', quantity: delta, note: 'Reabastecer a máximo', created_by: null } });
+      setIsStockModalOpen(false);
+      await loadProducts();
+    } catch (e) {
+      alert('Error reabasteciendo');
+    }
+  };
+
+  const submitStockIngreso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetProduct) return;
+    if (stockQty <= 0) {
+      alert('Ingresa una cantidad mayor a 0');
+      return;
+    }
+    if (!isTauriEnvironment()) {
+      alert('Disponible solo con backend Tauri');
+      return;
+    }
+    try {
+      await invoke('add_stock_movement', { movement: { product_id: targetProduct.id, movement_type: 'ingreso', quantity: Math.floor(stockQty), note: stockNote || null, created_by: null } });
+      setIsStockModalOpen(false);
+      await loadProducts();
+    } catch (e) {
+      alert('Error aplicando ingreso');
     }
   };
 
@@ -142,6 +211,17 @@ export default function Products() {
       // Solo intentar guardar si Tauri está disponible
       if (isTauriEnvironment()) {
         console.log('✅ Tauri detectado, guardando producto...');
+        // Validación rápida de SKU duplicado en frontend
+        const newSku = (data.sku || '').trim();
+        if (newSku) {
+          const duplicate = products.some(p =>
+            p.sku && p.sku.trim().toLowerCase() === newSku.toLowerCase() && (editingProduct ? p.id !== editingProduct.id : true)
+          );
+          if (duplicate) {
+            alert('El SKU ya existe. Usa otro SKU o edita el producto existente.');
+            return;
+          }
+        }
         
         if (editingProduct?.id) {
           // ACTUALIZAR producto existente
@@ -165,7 +245,12 @@ export default function Products() {
       }
     } catch (error) {
       console.error('❌ Error guardando producto:', error);
-      alert(`❌ Error al guardar el producto:\n\n${error}\n\nVerifica la consola para más detalles.`);
+      const msg = String(error || 'Error al guardar');
+      if (msg.includes('UNIQUE constraint failed: products.sku') || msg.toLowerCase().includes('sku ya existe')) {
+        alert('El SKU ya existe. Usa otro SKU o edita el producto existente.');
+      } else {
+        alert(`❌ Error al guardar el producto:\n\n${msg}\n\nVerifica la consola para más detalles.`);
+      }
     }
   };
 
@@ -241,6 +326,12 @@ export default function Products() {
                     Precio Venta
                   </th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Stock
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Stock Máximo
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Vencimiento
                   </th>
                   <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
@@ -272,11 +363,24 @@ export default function Products() {
                     <td className="px-5 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                       ${product.sale_price?.toLocaleString() || '0'}
                     </td>
+                    <td className="px-5 py-4 text-sm text-gray-900 dark:text-gray-100">
+                      {product.current_stock ?? 0}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-900 dark:text-gray-100">
+                      {product.max_stock ?? 0}
+                    </td>
                     <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {product.expiry_date || <span className="text-gray-400 dark:text-gray-600">-</span>}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex justify-end gap-1">
+                        <button 
+                          onClick={() => openStockModal(product)}
+                          className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
+                          title="Ajustar stock"
+                        >
+                          <Package size={16} />
+                        </button>
                         <button 
                           onClick={() => handleEditProduct(product)}
                           className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
@@ -313,6 +417,42 @@ export default function Products() {
           onSubmit={handleSubmitProduct}
           onCancel={() => setIsModalOpen(false)}
         />
+      </Modal>
+
+      <Modal
+        isOpen={isStockModalOpen}
+        onClose={() => setIsStockModalOpen(false)}
+        title={targetProduct ? `Ajuste de Stock - ${targetProduct.name}` : 'Ajuste de Stock'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Stock actual</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{targetProduct?.current_stock ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Stock máximo</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{targetProduct?.max_stock ?? 0}</p>
+            </div>
+          </div>
+          <div className="flex justify-between items-center">
+            <Button type="button" onClick={restockToMax}>Reabastecer a máximo</Button>
+          </div>
+          <form onSubmit={submitStockIngreso} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ingreso manual</label>
+              <input type="number" value={stockQty} onChange={(e) => setStockQty(Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder="Cantidad a ingresar" />
+            </div>
+            <div>
+              <input type="text" value={stockNote} onChange={(e) => setStockNote(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" placeholder="Nota (opcional)" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setIsStockModalOpen(false)}>Cancelar</Button>
+              <Button type="submit">Aplicar ingreso</Button>
+            </div>
+          </form>
+        </div>
       </Modal>
     </div>
   );

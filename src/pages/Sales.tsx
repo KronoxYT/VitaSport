@@ -74,6 +74,10 @@ export default function Sales() {
 
   const handleSubmitSale = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.quantity <= 0) {
+      alert('La cantidad debe ser mayor a 0');
+      return;
+    }
     try {
       if (typeof window !== 'undefined' && '__TAURI__' in window) {
         const payload = {
@@ -93,7 +97,10 @@ export default function Sales() {
         alert('Ejecuta la app con backend para registrar ventas');
       }
     } catch (error) {
-      alert('Error registrando venta');
+      const msg = typeof error === 'string'
+        ? error
+        : (error as any)?.message || (error as any)?.toString?.() || 'Error registrando venta';
+      alert(msg);
     }
   };
 

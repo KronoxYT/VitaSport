@@ -22,6 +22,145 @@ struct User {
 }
 
 #[tauri::command]
+fn get_sales_by_product(
+    state: State<AppState>,
+    start_date: Option<String>,
+    end_date: Option<String>,
+    order_by: Option<String>,
+    category: Option<String>,
+    limit: Option<i32>,
+) -> Result<Vec<SalesByProduct>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let lim = limit.unwrap_or(5);
+    let order_col = match order_by.as_deref() {
+        Some("qty") => "total_qty",
+        _ => "total_revenue",
+    };
+    let sql = format!(
+        "SELECT s.product_id, COALESCE(p.name, '') as name,
+                COALESCE(SUM(s.quantity),0) as total_qty,
+                COALESCE(SUM(s.sale_price),0.0) as total_revenue
+         FROM sales s
+         LEFT JOIN products p ON p.id = s.product_id
+         WHERE (?1 IS NULL OR substr(s.sale_date,1,10) >= ?1)
+           AND (?2 IS NULL OR substr(s.sale_date,1,10) <= ?2)
+           AND (?3 IS NULL OR p.category = ?3)
+         GROUP BY s.product_id, name
+         ORDER BY {} DESC
+         LIMIT ?4",
+        order_col
+    );
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![start_date, end_date, category, lim], |row| {
+            Ok(SalesByProduct {
+                product_id: row.get(0)?,
+                name: row.get(1)?,
+                total_qty: row.get(2)?,
+                total_revenue: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(rows)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SalesTotals {
+    total_units: i64,
+    total_revenue: f64,
+}
+
+#[tauri::command]
+fn get_sales_totals(
+    state: State<AppState>,
+    start_date: Option<String>,
+    end_date: Option<String>,
+    category: Option<String>,
+) -> Result<SalesTotals, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(SUM(s.quantity),0) as total_units,
+                    COALESCE(SUM(s.sale_price),0.0) as total_revenue
+             FROM sales s
+             LEFT JOIN products p ON p.id = s.product_id
+             WHERE (?1 IS NULL OR substr(s.sale_date,1,10) >= ?1)
+               AND (?2 IS NULL OR substr(s.sale_date,1,10) <= ?2)
+               AND (?3 IS NULL OR p.category = ?3)",
+        )
+        .map_err(|e| e.to_string())?;
+    let totals = stmt
+        .query_row(rusqlite::params![start_date, end_date, category], |row| {
+            Ok(SalesTotals {
+                total_units: row.get(0)?,
+                total_revenue: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    Ok(totals)
+}
+
+#[tauri::command]
+fn get_sales_trend(state: State<AppState>, days: Option<i32>) -> Result<Vec<SalesTrendPoint>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let d = days.unwrap_or(7);
+    let modifier = format!("-{} day", d.max(0));
+    let mut stmt = conn
+        .prepare(
+            "SELECT substr(sale_date,1,10) as day,
+                    COUNT(*) as sales_count,
+                    COALESCE(SUM(sale_price),0.0) as total_revenue
+             FROM sales
+             WHERE substr(sale_date,1,10) >= date('now', ?1)
+             GROUP BY day
+             ORDER BY day ASC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![modifier], |row| {
+            Ok(SalesTrendPoint {
+                date: row.get(0)?,
+                sales_count: row.get(1)?,
+                total_revenue: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(rows)
+}
+#[derive(Debug, Serialize, Deserialize)]
+struct StockBalance {
+    product_id: i32,
+    current_stock: i64,
+}
+
+#[tauri::command]
+fn get_stock_balances(state: State<AppState>) -> Result<Vec<StockBalance>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT product_id, COALESCE(SUM(CASE WHEN type='ingreso' THEN quantity WHEN type='egreso' THEN -quantity ELSE 0 END),0) as balance FROM stock_movements GROUP BY product_id")
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(StockBalance {
+                product_id: row.get(0)?,
+                current_stock: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(rows)
+}
+
+#[tauri::command]
 fn export_sales_report(state: State<AppState>, start_date: Option<String>, end_date: Option<String>) -> Result<String, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
 
@@ -191,6 +330,21 @@ struct StockMovement {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct SalesByProduct {
+    product_id: i32,
+    name: String,
+    total_qty: i64,
+    total_revenue: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SalesTrendPoint {
+    date: String,
+    sales_count: i64,
+    total_revenue: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct Purchase {
     id: Option<i32>,
     product_id: i32,
@@ -259,7 +413,20 @@ fn init_database() -> Result<Connection> {
         [],
     )?;
 
-    let _ = conn.execute("ALTER TABLE products ADD COLUMN max_stock INTEGER", []);
+    {
+        let mut stmt = conn.prepare("PRAGMA table_info(products)")?;
+        let mut rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        let mut col_names: Vec<String> = Vec::new();
+        for r in rows {
+            if let Ok(name) = r { col_names.push(name); }
+        }
+        if !col_names.iter().any(|c| c == "sale_price") {
+            let _ = conn.execute("ALTER TABLE products ADD COLUMN sale_price REAL", []);
+        }
+        if !col_names.iter().any(|c| c == "max_stock") {
+            let _ = conn.execute("ALTER TABLE products ADD COLUMN max_stock INTEGER", []);
+        }
+    }
 
     // Create stock_movements table
     conn.execute(
@@ -370,6 +537,21 @@ fn get_products(state: State<AppState>) -> Result<Vec<Product>, String> {
 #[tauri::command]
 fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref sku_val) = product.sku {
+        let existing = conn.query_row(
+            "SELECT id FROM products WHERE sku = ?1 LIMIT 1",
+            rusqlite::params![sku_val],
+            |row| row.get::<_, i32>(0),
+        );
+        match existing {
+            Ok(_id) => {
+                return Err("El SKU ya existe. Usa otro SKU o edita el producto existente.".to_string());
+            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => {}
+            Err(e) => return Err(e.to_string()),
+        }
+    }
     conn.execute(
         "INSERT INTO products (sku, name, sale_price, brand, category, presentation, flavor, weight, image_path, expiry_date, lot_number, min_stock, max_stock, location, status) 
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
@@ -391,9 +573,27 @@ fn add_product(state: State<AppState>, product: Product) -> Result<i64, String> 
             product.status,
         ],
     )
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| {
+        let msg = e.to_string();
+        if msg.contains("UNIQUE constraint failed: products.sku") {
+            "El SKU ya existe. Usa otro SKU o edita el producto existente.".to_string()
+        } else {
+            msg
+        }
+    })?;
 
-    Ok(conn.last_insert_rowid())
+    let new_id = conn.last_insert_rowid();
+
+    if let Some(max_qty) = product.max_stock {
+        if max_qty > 0 {
+            let _ = conn.execute(
+                "INSERT INTO stock_movements (product_id, type, quantity, note, created_by) VALUES (?1, 'ingreso', ?2, ?3, ?4)",
+                rusqlite::params![new_id as i32, max_qty, Option::<String>::None, Option::<i32>::None],
+            );
+        }
+    }
+
+    Ok(new_id)
 }
 
 #[tauri::command]
@@ -502,46 +702,67 @@ fn get_sales(state: State<AppState>) -> Result<Vec<Sale>, String> {
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-
     Ok(sales)
 }
 
 #[tauri::command]
 fn add_sale(state: State<AppState>, sale: Sale) -> Result<i64, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    conn.execute(
-        "INSERT INTO sales (product_id, quantity, sale_price, discount, channel, sale_date, created_by) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        rusqlite::params![
-            sale.product_id,
-            sale.quantity,
-            sale.sale_price,
-            sale.discount,
-            sale.channel,
-            sale.sale_date,
-            sale.created_by,
-        ],
-    )
-    .map_err(|e| e.to_string())?;
-
-    conn.execute(
-        "INSERT INTO stock_movements (product_id, type, quantity, note, created_by)
-         VALUES (?1, 'egreso', ?2, ?3, ?4)",
-        rusqlite::params![
-            sale.product_id,
-            sale.quantity,
-            Option::<String>::None,
-            sale.created_by,
-        ],
-    ).map_err(|e| e.to_string())?;
-
-    Ok(conn.last_insert_rowid())
+    conn.execute("BEGIN IMMEDIATE TRANSACTION", []).map_err(|e| e.to_string())?;
+    let result: Result<i64, String> = (|| {
+        let current_stock: i64 = conn
+            .query_row(
+                "SELECT COALESCE(SUM(CASE WHEN type='ingreso' THEN quantity WHEN type='egreso' THEN -quantity ELSE 0 END),0) FROM stock_movements WHERE product_id=?1",
+                rusqlite::params![sale.product_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        if (sale.quantity as i64) > current_stock {
+            return Err(format!("Stock insuficiente. Disponible: {}, solicitado: {}", current_stock, sale.quantity));
+        }
+        conn.execute(
+            "INSERT INTO sales (product_id, quantity, sale_price, discount, channel, sale_date, created_by) 
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![
+                sale.product_id,
+                sale.quantity,
+                sale.sale_price,
+                sale.discount,
+                sale.channel,
+                sale.sale_date,
+                sale.created_by,
+            ],
+        ).map_err(|e| e.to_string())?;
+        let sale_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO stock_movements (product_id, type, quantity, note, created_by)
+             VALUES (?1, 'egreso', ?2, ?3, ?4)",
+            rusqlite::params![
+                sale.product_id,
+                sale.quantity,
+                Option::<String>::None,
+                sale.created_by,
+            ],
+        ).map_err(|e| e.to_string())?;
+        Ok(sale_id)
+    })();
+    match result {
+        Ok(sale_id) => {
+            conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+            Ok(sale_id)
+        }
+        Err(err) => {
+            let _ = conn.execute("ROLLBACK", []);
+            Err(err)
+        }
+    }
 }
 
 // ============================================
 // USER COMMANDS
 // ============================================
 
+// ... (rest of the code remains the same)
 #[tauri::command]
 fn get_users(state: State<AppState>) -> Result<Vec<User>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
@@ -678,6 +899,10 @@ fn main() {
             add_stock_movement,
             get_sales,
             add_sale,
+            get_sales_by_product,
+            get_sales_trend,
+            get_sales_totals,
+            get_stock_balances,
             export_inventory_report,
             export_sales_report,
             export_all_reports,
