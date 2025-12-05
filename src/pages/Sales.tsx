@@ -78,13 +78,22 @@ export default function Sales() {
       alert('La cantidad debe ser mayor a 0');
       return;
     }
+    if (form.sale_price <= 0) {
+      alert('El precio por unidad debe ser mayor a 0');
+      return;
+    }
+    const discPct = Math.max(0, Math.min(100, Number(form.discount) || 0));
     try {
       if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const unit = Number(form.sale_price) || 0;
+        const qty = Number(form.quantity) || 0;
+        const subtotal = unit * qty;
+        const total = Math.max(0, Math.round(subtotal * (1 - discPct / 100)));
         const payload = {
           product_id: form.product_id,
           quantity: form.quantity,
-          sale_price: form.sale_price,
-          discount: form.discount,
+          sale_price: total,
+          discount: discPct,
           channel: form.channel,
           sale_date: new Date().toISOString(),
           created_by: null,
@@ -177,12 +186,12 @@ export default function Sales() {
               <input type="number" name="quantity" value={form.quantity} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio x Unidad</label>
               <input type="number" step="0.01" name="sale_price" value={form.sale_price} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento</label>
-              <input type="number" step="0.01" name="discount" value={form.discount} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento (%)</label>
+              <input type="number" step="0.01" min="0" max="100" name="discount" value={form.discount} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg" />
             </div>
           </div>
           <div>
@@ -192,6 +201,27 @@ export default function Sales() {
               <option value="Online">Online</option>
               <option value="Redes">Redes</option>
             </select>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm">
+            <div className="flex justify-between text-gray-700 dark:text-gray-300">
+              <span>Subtotal</span>
+              <span>${((Number(form.sale_price) || 0) * (Number(form.quantity) || 0)).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-gray-600 dark:text-gray-400 mt-1">
+              <span>Descuento</span>
+              <span>{Math.max(0, Math.min(100, Number(form.discount) || 0)).toLocaleString()}%</span>
+            </div>
+            <div className="flex justify-between text-gray-900 dark:text-gray-100 font-semibold mt-2">
+              <span>Total</span>
+              <span>{(() => {
+                const unit = Number(form.sale_price) || 0;
+                const qty = Number(form.quantity) || 0;
+                const subtotal = unit * qty;
+                const disc = Math.max(0, Math.min(100, Number(form.discount) || 0));
+                const total = Math.max(0, Math.round(subtotal * (1 - disc / 100)));
+                return `$${total.toLocaleString()}`;
+              })()}</span>
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>

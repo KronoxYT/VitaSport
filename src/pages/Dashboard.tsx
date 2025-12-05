@@ -249,7 +249,7 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                     <XAxis type="number" hide domain={[0, 100]} />
                     <YAxis type="category" dataKey="name" width={140} tick={{ fill: '#9ca3af' }} />
-                    <Tooltip formatter={(v: any, k: string, p: any) => {
+                    <Tooltip formatter={(_: any, k: string, p: any) => { void _;
                       const original = k === 'revN' ? p.payload.revenue : p.payload.qty;
                       return k === 'revN' ? [`$${Number(original).toLocaleString()}`, 'Ingresos'] : [`${Number(original).toLocaleString()} uds`, 'Unidades'];
                     }} />

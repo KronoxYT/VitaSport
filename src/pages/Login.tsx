@@ -145,7 +145,7 @@ export default function Login() {
 
         {/* Versión */}
         <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
-          VitaSport v1.0.0
+          VitaSport v1.1.0
         </p>
       </div>
     </div>
