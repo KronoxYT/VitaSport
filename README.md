@@ -101,6 +101,21 @@ npm run dev
 4. La sesión se mantiene automáticamente (localStorage)
 5. Para cerrar sesión, haz clic en el botón al final del sidebar
 
+### Registrar ventas y movimientos de caja
+
+- Para registrar una **venta**:
+  1. Ve a la página **Ventas** desde el sidebar.
+  2. Haz clic en el botón **"Nueva Venta"**.
+  3. Selecciona el producto, cantidad, precio, descuento opcional y canal.
+  4. Verifica el **Total** y pulsa **"Registrar Venta"**.
+
+- Para registrar **gastos u otros movimientos de dinero** (caja):
+  1. Ve a la página **Ventas**.
+  2. Haz clic en el botón **"Movimiento de Caja"** en la esquina superior derecha.
+  3. Elige el **Tipo**: `Ingreso` o `Gasto / Egreso`.
+  4. Ingresa el **Monto**, una **Categoría** (ej. Alquiler, Servicios, Sueldos) y una **Descripción** opcional.
+  5. Pulsa **"Registrar Movimiento"**. El movimiento se sumará al resumen de caja.
+
 **Nota:** En modo desarrollo (`npm run dev`), las páginas mostrarán interfaz vacía porque no hay backend. Para funcionalidad completa, usa `npm run tauri:dev`.
 
 ---
@@ -234,10 +249,17 @@ VitaSport/
 
 ### 💰 Ventas
 - Conectado a base de datos real
-- Estadísticas: Ventas hoy, mes, total transacciones
-- Historial completo de ventas
-- Estado vacío cuando no hay ventas
-- Filtrado por fecha y producto
+- Estadísticas: ventas de hoy, ventas del mes y total de transacciones
+- Historial completo de ventas con tabla detallada
+- Estados de carga y vacío cuando no hay ventas
+- Integrado con el módulo de caja para calcular ingresos totales
+
+### 💵 Caja (Ingresos, Egresos y Gastos)
+- Resumen de caja en tiempo real: **Ingresos Totales**, **Gastos / Egresos** y **Balance de Caja**.
+- Registro de movimientos de caja (ingresos adicionales, gastos fijos y otros egresos).
+- Modal **"Movimiento de Caja"** para agregar manualmente ingresos o egresos.
+- Tabla de movimientos con fecha, tipo, monto, categoría y descripción.
+- Las ventas registradas en la página **Ventas** se suman automáticamente como ingresos en la caja.
 
 ### 📈 Reportes
 - Generación de reportes

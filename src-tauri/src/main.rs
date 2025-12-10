@@ -366,6 +366,23 @@ struct Sale {
     sale_date: String,
     created_by: Option<i32>,
 }
+#[derive(Debug, Serialize, Deserialize)]
+struct CashMovement {
+    id: Option<i32>,
+    movement_type: String,
+    amount: f64,
+    category: Option<String>,
+    description: Option<String>,
+    movement_date: String,
+    created_by: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CashSummary {
+    total_income: f64,
+    total_expense: f64,
+    balance: f64,
+}
 
 // Database state
 struct AppState {
@@ -472,6 +489,19 @@ fn init_database() -> Result<Connection> {
             sale_date TEXT NOT NULL,
             created_by INTEGER,
             FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        )",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cash_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movement_type TEXT NOT NULL,
+            amount REAL NOT NULL,
+            category TEXT,
+            description TEXT,
+            movement_date TEXT NOT NULL,
+            created_by INTEGER,
             FOREIGN KEY (created_by) REFERENCES users(id)
         )",
         [],
@@ -757,6 +787,88 @@ fn add_sale(state: State<AppState>, sale: Sale) -> Result<i64, String> {
         }
     }
 }
+#[tauri::command]
+fn get_cash_movements(state: State<AppState>) -> Result<Vec<CashMovement>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, movement_type, amount, category, description, movement_date, created_by FROM cash_movements ORDER BY movement_date DESC, id DESC LIMIT 100")
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(CashMovement {
+                id: row.get(0)?,
+                movement_type: row.get(1)?,
+                amount: row.get(2)?,
+                category: row.get(3)?,
+                description: row.get(4)?,
+                movement_date: row.get(5)?,
+                created_by: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(rows)
+}
+
+#[tauri::command]
+fn add_cash_movement(state: State<AppState>, movement: CashMovement) -> Result<i64, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO cash_movements (movement_type, amount, category, description, movement_date, created_by) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![
+            movement.movement_type,
+            movement.amount,
+            movement.category,
+            movement.description,
+            movement.movement_date,
+            movement.created_by,
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn get_cash_summary(state: State<AppState>) -> Result<CashSummary, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let total_sales_income: f64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(sale_price),0.0) FROM sales",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0.0);
+
+    let total_other_income: f64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount),0.0) FROM cash_movements WHERE movement_type='ingreso'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0.0);
+
+    let total_expense: f64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount),0.0) FROM cash_movements WHERE movement_type='egreso'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0.0);
+
+    let income = total_sales_income + total_other_income;
+
+    Ok(CashSummary {
+        total_income: income,
+        total_expense,
+        balance: income - total_expense,
+    })
+}
 
 // ============================================
 // USER COMMANDS
@@ -899,6 +1011,9 @@ fn main() {
             add_stock_movement,
             get_sales,
             add_sale,
+            get_cash_movements,
+            add_cash_movement,
+            get_cash_summary,
             get_sales_by_product,
             get_sales_trend,
             get_sales_totals,
