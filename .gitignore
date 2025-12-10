@@ -39,3 +39,4 @@ logs/
 
 # Vercel
 .vercel
+build_installer_zip.ps1
